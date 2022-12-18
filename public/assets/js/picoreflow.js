@@ -477,6 +477,7 @@ function saveProfile()
 }
 
 function get_tick_size() {
+
 switch(time_scale_profile){
   case "s":
     return 1;
@@ -497,6 +498,7 @@ switch(time_scale_profile){
   case "h":
     return 3600;
   }
+
 return 3600;
 }
 
@@ -530,6 +532,7 @@ function getOptions()
       tickColor: 'rgba(216, 211, 197, 0.2)',
       tickFormatter: timeTickFormatter,
       tickSize: get_tick_size_mt(),
+
       font:
       {
         size: 14,
@@ -749,6 +752,7 @@ $(document).ready(function()
                     //$('#cost').html(x.currency_type + parseFloat(x.cost).toFixed(2));
                     $('#cost').html(parseFloat(x.cost).toFixed(2));
                     $('#kwh').html((x.cost / kwh_rate).toFixed(2));
+
 
                     // WANT TO CHANGE BEHAVIOR OF THE LAMPS ON WEB PAGE
                     // Turn on/off relabeled web page icons, now labeled running and idle

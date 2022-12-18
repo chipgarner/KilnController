@@ -1,10 +1,11 @@
 import logging
 import os
-# from digitalio import DigitalInOut
-# import busio
 
 service_running_led = False
 kiln_name = "Albert"
+
+from digitalio import DigitalInOut
+import busio
 
 service_running_led_gpio = 6 # Old system
 function_passcode = "unni"
@@ -64,7 +65,6 @@ except NotImplementedError:
     print("not running on blinka recognized board, probably a simulation")
 except ModuleNotFoundError:
     print("No board, probably a simulation")
-
 
 ### Thermocouple Adapter selection:
 #   max31855 - bitbang SPI interface
@@ -150,7 +150,7 @@ kiln_must_catch_up = True
 # or 100% off because the kiln is too hot. No integral builds up
 # outside the window. The bigger you make the window, the more
 # integral you will accumulate. This should be a positive integer.
-pid_control_window = 500 #degrees
+pid_control_window = 50 #degrees
 
 # thermocouple offset
 # If you put your thermocouple in ice water and it reads 36F, you can
