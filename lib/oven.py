@@ -9,6 +9,8 @@ import digitalio
 import busio
 import statistics
 
+from threading import Timer
+
 log = logging.getLogger(__name__)
 
 class DupFilter(object):
@@ -103,7 +105,13 @@ class TempSensorSimulated(TempSensor):
     '''Simulates a temperature sensor '''
     def __init__(self):
         TempSensor.__init__(self)
-        self.simulated_temperature = 0
+        self.simulated_temperature = 20
+
+        self.noConnection = False
+        self.shortToGround = False
+        self.shortToVCC = False
+        self.unknownError = False
+        self.bad_percent = 7
     def temperature(self):
         return self.simulated_temperature
 
@@ -143,9 +151,39 @@ class TempSensorReal(TempSensor):
 
     def run(self):
         while True:
-            temp = self.get_temperature()
-            if temp:
-                self.temptracker.add(temp)
+            # reset error counter if time is up
+            if (time.time() - self.bad_stamp) > (self.time_step * 2):
+                if self.bad_count + self.ok_count:
+                    self.bad_percent = (self.bad_count / (self.bad_count + self.ok_count)) * 100
+                else:
+                    self.bad_percent = 0
+                self.bad_count = 0
+                self.ok_count = 0
+                self.bad_stamp = time.time()
+
+            temp = self.thermocouple.get()
+            self.noConnection = self.thermocouple.noConnection
+            self.shortToGround = self.thermocouple.shortToGround
+            self.shortToVCC = self.thermocouple.shortToVCC
+            self.unknownError = self.thermocouple.unknownError
+
+            is_bad_value = self.noConnection | self.unknownError
+            if not config.ignore_tc_short_errors:
+                is_bad_value |= self.shortToGround | self.shortToVCC
+
+            if not is_bad_value:
+                temps.append(temp)
+                if len(temps) > config.temperature_average_samples:
+                    del temps[0]
+                self.ok_count += 1
+
+            else:
+                log.error("Problem reading temp N/C:%s GND:%s VCC:%s ???:%s" % (self.noConnection,self.shortToGround,self.shortToVCC,self.unknownError))
+                self.bad_count += 1
+
+            if len(temps):
+                self.temperature = self.get_avg_temp(temps)
+
             time.sleep(self.sleeptime)
 
 class TempTracker(object):
@@ -316,11 +354,17 @@ class Oven(threading.Thread):
         self.daemon = True
         self.temperature = 0
         self.time_step = config.sensor_time_wait
+        self.scheduled_run_timer = None
+        self.start_datetime = None
         self.reset()
 
     def reset(self):
         self.cost = 0
         self.state = "IDLE"
+        if self.scheduled_run_timer and self.scheduled_run_timer.is_alive():
+            log.info("Cancelling previously scheduled run")
+            self.scheduled_run_timer.cancel()
+            self.start_datetime = None
         self.profile = None
         self.start_time = 0
         self.runtime = 0
@@ -340,6 +384,32 @@ class Oven(threading.Thread):
         log.info("Running schedule %s starting at %d minutes" % (profile.name,startat))
         log.info("Starting")
 
+    def scheduled_run(self, start_datetime, profile, run_trigger, startat=0):
+        self.reset()
+        seconds_until_start = (
+            start_datetime - datetime.datetime.now()
+        ).total_seconds()
+        if seconds_until_start <= 0:
+            return
+
+        self.state = "SCHEDULED"
+        self.start_datetime = start_datetime
+        self.scheduled_run_timer = Timer(
+            seconds_until_start,
+            self._timeout,
+            args=[profile, run_trigger, startat],
+        )
+        self.scheduled_run_timer.start()
+        log.info(
+            "Scheduled to run the kiln at %s",
+            self.start_datetime,
+        )
+
+    def _timeout(self, profile, run_trigger, startat):
+        self.run_profile(profile, startat)
+        if run_trigger:
+            run_trigger()
+
     def abort_run(self):
         self.reset()
         self.save_automatic_restart_state()
@@ -351,16 +421,30 @@ class Oven(threading.Thread):
         '''shift the whole schedule forward in time by one time_step
         to wait for the kiln to catch up'''
         if config.kiln_must_catch_up == True:
-            temp = self.board.temp_sensor.temperature() + \
-                config.thermocouple_offset
-            # kiln too cold, wait for it to heat up
-            if self.target - temp > config.pid_control_window:
-                log.info("kiln must catch up, too cold, shifting schedule")
-                self.start_time = self.get_start_time()
-            # kiln too hot, wait for it to cool down
-            if temp - self.target > config.pid_control_window:
-                log.info("kiln must catch up, too hot, shifting schedule")
-                self.start_time = self.get_start_time()
+            temp = self.board.temp_sensor.temperature() + config.thermocouple_offset
+
+            # If (ambient temp in kiln room) > (firing curve start temp + catch-up), curve will never start
+            # Or, if oven overswings at low temps beyond the catch-up value, the timer pauses while cooling.
+            #  I'd lke the timer to continue regardless of these two cases.
+            if (temp < config.ignore_pid_control_window_until):
+                # kiln too cold, wait for it to heat up
+                if self.target - temp > config.pid_control_window:
+                    log.info("kiln must catch up, too cold, shifting schedule")
+                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000 / config.sim_speedup_factor)
+                    # kiln too hot, wait for it to cool down
+                if temp - self.target > config.pid_control_window:
+                    log.info("over-swing detected, continuing schedule timer while sensor temp < ignore_pid_control_window_until = %s" % config.ignore_pid_control_window_until)
+                    #self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000)
+            else: # original code
+                # kiln too cold, wait for it to heat up
+                if self.target - temp > config.pid_control_window:
+                    log.info("kiln must catch up, too cold, shifting schedule")
+                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000 / config.sim_speedup_factor)
+                    # kiln too hot, wait for it to cool down
+                if temp - self.target > config.pid_control_window:
+                    log.info("kiln must catch up, too hot, shifting schedule")
+                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000 / config.sim_speedup_factor)
+
 
     def update_runtime(self):
 
@@ -380,8 +464,19 @@ class Oven(threading.Thread):
             log.info("emergency!!! temperature too high")
             if config.ignore_temp_too_high == False:
                 self.abort_run()
-        
-        if self.board.temp_sensor.status.over_error_limit():
+
+        if self.board.temp_sensor.noConnection:
+            log.info("emergency!!! lost connection to thermocouple")
+            if config.ignore_lost_connection_tc == False:
+                self.abort_run()
+
+        if self.board.temp_sensor.unknownError:
+            log.info("emergency!!! unknown thermocouple error")
+            if config.ignore_unknown_tc_error == False:
+                self.abort_run()
+
+        if self.board.temp_sensor.bad_percent > 30:
+
             log.info("emergency!!! too many errors in a short period")
             if config.ignore_too_many_tc_errors == False:
                 self.abort_run()
@@ -400,6 +495,9 @@ class Oven(threading.Thread):
         self.cost = self.cost + cost
 
     def get_state(self):
+        scheduled_start = None
+        if self.start_datetime:
+            scheduled_start = self.start_datetime.strftime("%Y-%m-%d at %H:%M")
         temp = 0
         try:
             temp = self.board.temp_sensor.temperature() + config.thermocouple_offset
@@ -420,6 +518,7 @@ class Oven(threading.Thread):
             'currency_type': config.currency_type,
             'profile': self.profile.name if self.profile else None,
             'pidstats': self.pid.pidstats,
+            'scheduled_start': scheduled_start,
         }
         return state
 
@@ -500,6 +599,8 @@ class Oven(threading.Thread):
 class SimulatedOven(Oven):
 
     def __init__(self):
+        # call parent init
+        super().__init__()
         self.board = SimulatedBoard()
         self.t_env = config.sim_t_env
         self.c_heat = config.sim_c_heat
@@ -513,8 +614,6 @@ class SimulatedOven(Oven):
         # set temps to the temp of the surrounding environment
         self.t = self.t_env # deg C temp of oven
         self.t_h = self.t_env #deg C temp of heating element
-
-        super().__init__()
 
         # start thread
         self.start()
@@ -608,10 +707,10 @@ class RealOven(Oven):
     def __init__(self):
         self.board = RealBoard()
         self.output = Output()
-        self.reset()
-
         # call parent init
         Oven.__init__(self)
+
+        self.reset()
 
         # start thread
         self.start()
@@ -631,7 +730,9 @@ class RealOven(Oven):
         # self.heat is for the front end to display if the heat is on
         self.heat = 0.0
         if heat_on > 0:
-            self.heat = 1.0
+            # WANT ACTUAL VALUE SENT TO PICOREFLOW.JS
+            #self.heat = 1.0
+            self.heat = heat_on
 
         if heat_on:
             self.output.heat(heat_on)
@@ -722,6 +823,7 @@ class PID():
         out4logs = 0
         dErr = 0
         if error < (-1 * config.pid_control_window):
+        #if (error < (-1 * config.pid_control_window)) and (temp >= config.ignore_pid_control_window_until):
             log.info("kiln outside pid control window, max cooling")
             output = 0
             # it is possible to set self.iterm=0 here and also below
@@ -737,7 +839,7 @@ class PID():
             output = sorted([-1 * window_size, output, window_size])[1]
             out4logs = output
             output = float(output / window_size)
-            
+
         self.lastErr = error
         self.lastNow = now
 

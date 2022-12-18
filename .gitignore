@@ -4,8 +4,26 @@
 .#*
 *.swp
 .DStore/
+**/.DS_Store
 thumbs.db
 #storage/profiles
 #config.py
 .idea/*
+storage/profiles/TEST.json
+systemfiles/mark_scripts/net-dev-kick.log
+docs/.DS_Store
+public/assets/js/picoreflow.js
+storage/profiles/12-timmar 940 övernatt bisque.json
+storage/profiles/12-timmar 960 övernatt bisque.json
+storage/profiles/12-timmar torkning 60-80.json
+storage/profiles/3-timmar torkning 60.json
+storage/profiles/Bisque2.json
+storage/profiles/Stengodsglasyr 1260.json
+storage/profiles/Stengodsglasyr 1250.json
+public/assets/js/picoreflow.js.backup
+*.icloud
+_marktilles_/ronald_update.tar
+.My kiln controller project.pdf.icloud
+*.icloud
 state.json
+

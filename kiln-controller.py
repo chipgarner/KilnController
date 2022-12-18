@@ -4,6 +4,7 @@ import os
 import sys
 import logging
 import json
+from datetime import datetime
 
 import bottle
 import gevent
@@ -34,6 +35,17 @@ from oven import SimulatedOven, RealOven, Profile
 from ovenWatcher import OvenWatcher
 
 app = bottle.Bottle()
+
+# START BLINKING LED WHEN SERVICE IS RUNNING. REM OUT SECTION IF NOT DESIRED
+if config.service_running_led == True:
+    log.info("Starting GPIO service-running LED on GPIO " + str(config.service_running_led_gpio))
+    from gpiozero import Button, LEDBoard
+    from signal import pause
+    import warnings, os, sys
+    service_running_ledGPIO = config.service_running_led_gpio
+    service_running_led=LEDBoard(service_running_ledGPIO)
+    service_running_led.blink(on_time=1, off_time=1)
+# END - START BLINKING LED WHEN SERVICE IS RUNNING
 
 if config.simulate == True:
     log.info("this is a simulation")
@@ -69,7 +81,7 @@ def handle_api():
 
         # start at a specific minute in the schedule
         # for restarting and skipping over early parts of a schedule
-        startat = 0;      
+        startat = 0
         if 'startat' in bottle.request.json:
             startat = bottle.request.json['startat']
 
@@ -81,8 +93,7 @@ def handle_api():
         # FIXME juggling of json should happen in the Profile class
         profile_json = json.dumps(profile)
         profile = Profile(profile_json)
-        oven.run_profile(profile,startat=startat)
-        ovenWatcher.record(profile)
+        run_profile(profile,startat=startat)
 
     if bottle.request.json['cmd'] == 'stop':
         log.info("api stop command received")
@@ -117,6 +128,11 @@ def find_profile(wanted):
             return profile
     return None
 
+def run_profile(profile, startat=0):
+    oven.run_profile(profile, startat)
+    ovenWatcher.record(profile)
+
+
 @app.route('/picoreflow/:filename#.*#')
 def send_static(filename):
     log.debug("serving %s" % filename)
@@ -147,8 +163,26 @@ def handle_control():
                     if profile_obj:
                         profile_json = json.dumps(profile_obj)
                         profile = Profile(profile_json)
-                    oven.run_profile(profile)
-                    ovenWatcher.record(profile)
+
+                    run_profile(profile)
+
+                elif msgdict.get("cmd") == "SCHEDULED_RUN":
+                    log.info("SCHEDULED_RUN command received")
+                    scheduled_start_time = msgdict.get('scheduledStartTime')
+                    profile_obj = msgdict.get('profile')
+                    if profile_obj:
+                        profile_json = json.dumps(profile_obj)
+                        profile = Profile(profile_json)
+
+                    start_datetime = datetime.fromisoformat(
+                        scheduled_start_time,
+                    )
+                    oven.scheduled_run(
+                        start_datetime,
+                        profile,
+                        lambda: ovenWatcher.record(profile),
+                    )
+
                 elif msgdict.get("cmd") == "SIMULATE":
                     log.info("SIMULATE command received")
                     #profile_obj = msgdict.get('profile')
@@ -163,6 +197,24 @@ def handle_control():
                 elif msgdict.get("cmd") == "STOP":
                     log.info("Stop command received")
                     oven.abort_run()
+                elif msgdict.get("cmd") == "BACKEND_FUNCTION_1":
+                    log.info("BACKEND_FUNCTION_1 command received")
+                    #sample function, these backend scripts are simple password protected - see config.py
+                    #os.system ("/home/pi/mark_scripts/shutdownkiln &"); # shutdown and power off
+                    os.system ("sudo shutdown -P +0 &"); # shutdown and power off
+                # SPECIFIC TO MY NEED TO SWAP GUI BETWEEN TWO SEPARATE INSTANCES OF KILN-CONTROLLER FOR CONTROLLING TWO DIFFERENT OVENS
+                elif msgdict.get("cmd") == "BACKEND_FUNCTION_2":
+                    log.info("BACKEND_FUNCTION_2 command received")
+                    #these backend scripts are simple password protected, password and kiln names are in the config file config.py
+                    if config.kiln_name == "Chematex":
+                       log.info("Switching to Rhode kiln")
+                       oven.abort_run()
+                       os.system ("/home/pi/mark_scripts/rhode &")
+                    else:
+                       log.info("Switching to Chematex kiln")
+                       oven.abort_run()
+                       os.system ("/home/pi/mark_scripts/chematex &")
+                # END SWAP GUI BETWEEN TWO SEPARATE INSTANCES OF KILN-CONTROLLER
         except WebSocketError as e:
             log.error(e)
             break
@@ -281,8 +333,20 @@ def get_config():
         "time_scale_slope": config.time_scale_slope,
         "time_scale_profile": config.time_scale_profile,
         "kwh_rate": config.kwh_rate,
-        "currency_type": config.currency_type})    
-
+        "kw_elements": config.kw_elements,
+        "currency_type": config.currency_type,
+        # ADDED TO PORT IN MORE INFO FROM BACKEND
+        "pid_kp": config.pid_kp,
+        "pid_ki": config.pid_ki,
+        "pid_kd": config.pid_kd,
+        "kiln_name": config.kiln_name,
+        "service_running_led_gpio": config.service_running_led_gpio,
+        "function_passcode": config.function_passcode,
+        "kiln_must_catch_up": config.kiln_must_catch_up,
+        "pid_control_window": config.pid_control_window,
+        "emergency_shutoff_temp": config.emergency_shutoff_temp,
+        "ignore_pid_control_window_until": config.ignore_pid_control_window_until})
+        # ADDED TO PORT IN MORE INFO FROM BACKEND
 
 def main():
     ip = "0.0.0.0"

@@ -7,12 +7,14 @@ var time_mode = 0;
 var selected_profile = 0;
 var selected_profile_name = 'cone-05-long-bisque.json';
 var temp_scale = "c";
-var time_scale_slope = "s";
+var time_scale_slope = "h";
 var time_scale_profile = "h";
 var time_scale_long = "Seconds";
 var temp_scale_display = "C";
 var kwh_rate = 0.26;
 var currency_type = "EUR";
+var function_passcode = "ABCDE";
+var kw_elements = 99999;
 
 var protocol = 'ws:';
 if (window.location.protocol == 'https:') {
@@ -24,6 +26,75 @@ var ws_control = new WebSocket(host+"/control");
 var ws_config = new WebSocket(host+"/config");
 var ws_storage = new WebSocket(host+"/storage");
 
+var emergency_shutoff_temp;
+
+// Added simple passcode check routine
+function checkPasscode () {
+        // Check hard-coded passcode
+        let inputtxt = prompt("CAUTION! Enter passcode to process command:", "");
+        if ( ( (inputtxt.toUpperCase()).trim()) == ( ( function_passcode.toUpperCase() ).trim() ) ) {
+             console.log("Correct passcode entered " + function_passcode + " (" + inputtxt + ")")
+             return true;
+         }
+        else {
+             console.log("Incorrect passcode entered: " + inputtxt + " (" + function_passcode + ")")
+             return false;
+        }
+}
+
+// ADDED OPTON TO HAVE BACKEND FUNCTION
+function BACKEND_FUNCTION_1() {
+        if (checkPasscode() == true) {
+            var cmd =
+   	    {
+   	       "cmd": "BACKEND_FUNCTION_1",
+  	    }
+            $.bootstrapGrowl("<span class=\"glyphicon glyphicon-exclamation-sign\"></span> <b>Performing immediate shutdown and power-off!<br><br>To restart, remove power supply for 15 seconds.</b>", {
+                        ele: 'body', // which element to append to
+                        type: 'error', // (null, 'info', 'error', 'success')
+                        offset: {from: 'top', amount: 250}, // 'top', or 'bottom'
+                        align: 'center', // ('left', 'right', or 'center')
+                        width: 385, // (integer, or 'auto')
+                        delay: 0,
+                        allow_dismiss: false,
+                        stackup_spacing: 10 // spacing between consecutively stacked growls.
+            });
+  	    ws_control.send(JSON.stringify(cmd));
+           }
+        else
+           {
+              alert('Wrong pascode!')
+              return false;
+           }
+}
+// END ADDED OPTON TO HAVE BACKEND FUNCTION
+
+// ADDED TO BE ABLE TO SWAP BETWEEN TWO DIFFERENT KILN INSTANCES
+function BACKEND_FUNCTION_2() {
+           if (checkPasscode() == true) {
+	      var cmd =
+              {
+   	         "cmd": "BACKEND_FUNCTION_2",
+  	      }
+   	      $.bootstrapGrowl("<span class=\"glyphicon glyphicon-exclamation-sign\"></span> <b>Restarting services, please wait 10 seconds before refreshing browser.</b>", {
+                ele: 'body', // which element to append to
+                type: 'info', // (null, 'info', 'error', 'success')
+                offset: {from: 'top', amount: 250}, // 'top', or 'bottom'
+                align: 'center', // ('left', 'right', or 'center')
+                width: 385, // (integer, or 'auto')
+                delay: 10000,
+                allow_dismiss: true,
+                stackup_spacing: 10 // spacing between consecutively stacked growls.
+              });
+  	      ws_control.send(JSON.stringify(cmd));
+           }
+           else
+           {
+              alert('Wrong pascode!')
+              return false;
+           }
+}
+// ADDED TO BE ABLE TO SWAP BETWEEN TWO DIFFERENT KILN INSTANCES§:w
 
 if(window.webkitRequestAnimationFrame) window.requestAnimationFrame = window.webkitRequestAnimationFrame;
 
@@ -51,12 +122,12 @@ function updateProfile(id)
     selected_profile = id;
     selected_profile_name = profiles[id].name;
     var job_seconds = profiles[id].data.length === 0 ? 0 : parseInt(profiles[id].data[profiles[id].data.length-1][0]);
-    var kwh = (3850*job_seconds/3600/1000).toFixed(2);
+    var kwh = (kw_elements*job_seconds/3600).toFixed(2);
     var cost =  (kwh*kwh_rate).toFixed(2);
     var job_time = new Date(job_seconds * 1000).toISOString().substr(11, 8);
     $('#sel_prof').html(profiles[id].name);
     $('#sel_prof_eta').html(job_time);
-    $('#sel_prof_cost').html(kwh + ' kWh ('+ currency_type +': '+ cost +')');
+    //$('#sel_prof_cost').html(kwh + ' kWh ('+ currency_type +': '+ cost +')');
     graph.profile.data = profiles[id].data;
     graph.plot = $.plot("#graph_container", [ graph.profile, graph.live ] , getOptions());
 }
@@ -207,7 +278,6 @@ if(axis.max<=60) {
   return val;
   }
 }
-
 function runTask()
 {
     var cmd =
@@ -221,6 +291,36 @@ function runTask()
 
     ws_control.send(JSON.stringify(cmd));
 
+}
+
+function scheduleTask()
+{
+  // Start and stop the selected curve so the screen will show correct scheduled curve at refreshing
+  var cmd =
+  {
+      "cmd": "RUN",
+      "profile": profiles[selected_profile]
+   }
+   ws_control.send(JSON.stringify(cmd));
+   // Start and stop the selected curve so the screen will show correct scheduled curve at refreshing
+   var cmd = {"cmd": "STOP"};
+   ws_control.send(JSON.stringify(cmd));
+
+  // Now proceed with scheduling the firing curve
+    const startTime = document.getElementById('scheduled-run-time').value;
+    console.log(startTime);
+
+    var cmd =
+    {
+        "cmd": "SCHEDULED_RUN",
+        "profile": profiles[selected_profile],
+        "scheduledStartTime": startTime,
+    }
+
+    graph.live.data = [];
+    graph.plot = $.plot("#graph_container", [ graph.profile, graph.live ] , getOptions());
+
+    ws_control.send(JSON.stringify(cmd));
 }
 
 function runTaskSimulation()
@@ -241,8 +341,15 @@ function runTaskSimulation()
 
 function abortTask()
 {
-    var cmd = {"cmd": "STOP"};
-    ws_control.send(JSON.stringify(cmd));
+    if (checkPasscode() == true) {
+       var cmd = {"cmd": "STOP"};
+       ws_control.send(JSON.stringify(cmd));
+    }
+    else
+    {
+       alert('Wrong pascode!')
+       return false;
+    }
 }
 
 function enterNewMode()
@@ -263,6 +370,7 @@ function enterNewMode()
 
 function enterEditMode()
 {
+    $("#nav_cancel").hide();
     state="EDIT"
     $('#status').slideUp();
     $('#edit').show();
@@ -278,6 +386,7 @@ function enterEditMode()
 
 function leaveEditMode()
 {
+    $("#nav_cancel").hide();
     selected_profile_name = $('#form_profile_name').val();
     ws_storage.send('GET');
     state="IDLE";
@@ -368,14 +477,28 @@ function saveProfile()
 }
 
 function get_tick_size() {
-//switch(time_scale_profile){
-//  case "s":
-//    return 1;
-//  case "m":
-//    return 60;
-//  case "h":
-//    return 3600;
-//  }
+
+switch(time_scale_profile){
+  case "s":
+    return 1;
+  case "m":
+    return 60;
+  case "h":
+    return 3600;
+  }
+return 3600;
+}
+
+function get_tick_size_mt() {
+switch(time_scale_profile){
+  case "s":
+    return 3600;
+  case "m":
+    return 3600;
+  case "h":
+    return 3600;
+  }
+
 return 3600;
 }
 
@@ -408,7 +531,8 @@ function getOptions()
       min: 0,
       tickColor: 'rgba(216, 211, 197, 0.2)',
       tickFormatter: timeTickFormatter,
-      tickSize: get_tick_size(),
+      tickSize: get_tick_size_mt(),
+
       font:
       {
         size: 14,
@@ -454,10 +578,37 @@ function getOptions()
 
 }
 
+function formatDateInput(date)
+{
+    var dd = date.getDate();
+    var mm = date.getMonth() + 1; //January is 0!
+    var yyyy = date.getFullYear();
+    var hh = date.getHours();
+    var mins = date.getMinutes();
 
+    if (dd < 10) {
+        dd = '0' + dd;
+    }
+
+    if (mm < 10) {
+        mm = '0' + mm;
+    }
+
+    const formattedDate = yyyy + '-' + mm + '-' + dd + 'T' + hh + ':' + mins;
+    return formattedDate;
+}
+
+function initDatetimePicker() {
+    const now = new Date();
+    const inThirtyMinutes = new Date();
+    inThirtyMinutes.setMinutes(inThirtyMinutes.getMinutes() + 10);
+    $('#scheduled-run-time').attr('value', formatDateInput(inThirtyMinutes));
+    $('#scheduled-run-time').attr('min', formatDateInput(now));
+}
 
 $(document).ready(function()
 {
+    initDatetimePicker();
 
     if(!("WebSocket" in window))
     {
@@ -473,7 +624,7 @@ $(document).ready(function()
         {
             console.log("Status Socket has been opened");
 
-            $.bootstrapGrowl("<span class=\"glyphicon glyphicon-exclamation-sign\"></span>Getting data from server",
+            $.bootstrapGrowl("<span class=\"glyphicon glyphicon-exclamation-sign\"></span> Getting data from server",
             {
             ele: 'body', // which element to append to
             type: 'success', // (null, 'info', 'error', 'success')
@@ -535,7 +686,8 @@ $(document).ready(function()
                     {
                         $('#target_temp').html('---');
                         updateProgress(0);
-                        $.bootstrapGrowl("<span class=\"glyphicon glyphicon-exclamation-sign\"></span> <b>Run completed</b>", {
+                        canceltime = new Date().toLocaleTimeString();//.substr(11, 8);
+                        $.bootstrapGrowl("<span class=\"glyphicon glyphicon-exclamation-sign\"></span> <b>Run completed or aborted " + canceltime + "</b>", {
                         ele: 'body', // which element to append to
                         type: 'success', // (null, 'info', 'error', 'success')
                         offset: {from: 'top', amount: 250}, // 'top', or 'bottom'
@@ -545,13 +697,48 @@ $(document).ready(function()
                         allow_dismiss: true,
                         stackup_spacing: 10 // spacing between consecutively stacked growls.
                         });
+                        $("#nav_action").hide();
+                    }
+                    else if (state_last == "SCHEDULED")
+                    {
+                        $("#nav_cancel").hide();
+                        $('#target_temp').html('---');
+                        updateProgress(0);
+                        //canceltime = new Date().toLocaleTimeString();//.substr(11, 8);
+                        //$.bootstrapGrowl("<span class=\"glyphicon glyphicon-exclamation-sign\"></span> <b>Schedule transitioned or canceled " + canceltime + "</b>", {
+                        //ele: 'body', // which element to append to
+                        //type: 'info', // (null, 'info', 'error', 'success')
+                        //offset: {from: 'top', amount: 250}, // 'top', or 'bottom'
+                        //align: 'center', // ('left', 'right', or 'center')
+                        //width: 385, // (integer, or 'auto')
+                        //delay: 3000,
+                        //allow_dismiss: true,
+                        //stackup_spacing: 10 // spacing between consecutively stacked growls.
+                        //});
+                    }
+                    else
+                    {
+                        $("#nav_cancel").hide();
                     }
                 }
 
                 if(state=="RUNNING")
                 {
+                    $("#show_BACKEND_FUNCTION_2").hide();
+                    // DONT ALLOW CHANGES UNDER ACTIVE FIRING
+                    $("#btn_delProfile").hide();
+                    $("#btn_newPoint").hide();
+                    $("#btn_delPoint").hide();
+                    $("#btn_new").hide();
+                    $("#allow_save_button").hide();
+                    $("#changes_locked").show();
+                    // END DONT ALLOW CHANGES UNDER ACTIVE FIRING
+                    $("#nav_cancel").hide();
+                    $('#schedule-status').hide()
                     $("#nav_start").hide();
                     $("#nav_stop").show();
+                    $("#timer").removeClass("ds-led-timer-active");
+                    heat_now = (x.heat*50).toFixed(0); // This displays time percentage Heat is ON in heating cycle
 
                     graph.live.data.push([x.runtime, x.temperature]);
                     graph.plot = $.plot("#graph_container", [ graph.profile, graph.live ] , getOptions());
@@ -560,26 +747,92 @@ $(document).ready(function()
                     eta = new Date(left * 1000).toISOString().substr(11, 8);
 
                     updateProgress(parseFloat(x.runtime)/parseFloat(x.totaltime)*100);
-                    $('#state').html('<span class="glyphicon glyphicon-time" style="font-size: 22px; font-weight: normal"></span><span style="font-family: Digi; font-size: 40px;">' + eta + '</span>');
+                    $('#state').html('<span class="glyphicon glyphicon-time" style="font-size: 22px; font-weight: normal"></span><span style="font-family: Digi; font-size: 28px;">' + eta + ' </span><span class=ds-text-small>&#9832;&#xfe0e; ' + heat_now + '%</span>');
                     $('#target_temp').html(parseInt(x.target));
-                    $('#cost').html(x.currency_type + parseFloat(x.cost).toFixed(2));
-                  
+                    //$('#cost').html(x.currency_type + parseFloat(x.cost).toFixed(2));
+                    $('#cost').html(parseFloat(x.cost).toFixed(2));
+                    $('#kwh').html((x.cost / kwh_rate).toFixed(2));
 
 
+                    // WANT TO CHANGE BEHAVIOR OF THE LAMPS ON WEB PAGE
+                    // Turn on/off relabeled web page icons, now labeled running and idle
+                    $('#running').addClass("ds-led-heat-active");   // RUNNING
+                    if (x.temperature > x.target)
+                       {
+                        $('#running').removeClass("ds-led-heat-active"); // RUNNING
+                        $('#running').addClass("ds-led-cool-active"); // RUNNING
+
+                       }
+                    $('#idle').removeClass("ds-led-hazard-active"); // IDLE
+
+                    // Add compare statements, I want to show different heating icon color depending on amount of heating
+                    if (heat_now > 99) {
+                    $('#state').html('<span class="glyphicon glyphicon-time" style="font-size: 22px; font-weight: normal"></span><span style="font-family: Digi; font-size: 28px;">' + eta + ' </span><span class=ds-text-small-red>&#9832;&#xfe0e; ' + heat_now + '%</span>');
+                    // I want blinking red like original when full blast on
+                      setTimeout(function() { $('#heat').addClass("ds-led-heat-active") }, 0 )
+                      setTimeout(function() { $('#heat').removeClass("ds-led-heat-active") }, (x.heat*1000.0)-5)
+                    }
+                    // I want blinking yellow when heater is on but not full blast
+                    else if (heat_now > 0.0) {
+                      $('#state').html('<span class="glyphicon glyphicon-time" style="font-size: 22px; font-weight: normal"></span><span style="font-family: Digi; font-size: 28px;">' + eta + ' </span><span class=ds-text-small-yellow>&#9832;&#xfe0e; ' + heat_now + '%</span>');
+                      setTimeout(function() { $('#heat').addClass("ds-led-hazard-active") }, 0 )
+                      setTimeout(function() { $('#heat').removeClass("ds-led-hazard-active") }, (x.heat*1000.0)-5)
+                    }
+
+                }
+                else if (state === "SCHEDULED") {
+                    $("#show_BACKEND_FUNCTION_2").hide();
+                    // DONT ALLOW CHANGES UNDER ACTIVE FIRING
+                    $("#btn_delProfile").hide();
+                    $("#btn_newPoint").hide();
+                    $("#btn_delPoint").hide();
+                    $("#btn_new").hide();
+                    $("#allow_save_button").hide();
+                    $("#changes_locked").show();
+                    // END DONT ALLOW CHANGES UNDER ACTIVE FIRING
+                    $("#nav_start").hide();
+                    $("#nav_stop").hide();
+                    $("#nav_cancel").show();
+                    $('#timer').addClass("ds-led-timer-active"); // Start blinking timer symbol
+                    $('#state').html('<p class="ds-text">'+state+'<span class=ds-text-small-light-blue>for '+x.scheduled_start+'</span></p>');
                 }
                 else
                 {
+                    // DONT ALLOW CHANGES UNDER ACTIVE FIRING
+                    $("#btn_delProfile").show();
+                    $("#allow_save_button").show();
+                    $("#btn_newPoint").show();
+                    $("#btn_delPoint").show();
+                    $("#btn_new").show();
+                    // END DONT ALLOW CHANGES UNDER ACTIVE FIRING
+                    $("#show_BACKEND_FUNCTION_2").show();
+                    $("#changes_locked").hide();
+                    $("#profile_selector").show();
                     $("#nav_start").show();
                     $("#nav_stop").hide();
+                    $("#nav_cancel").hide();
+                    $("#timer").removeClass("ds-led-timer-active");
                     $('#state').html('<p class="ds-text">'+state+'</p>');
-                }
+                    $('#schedule-status').hide()
+
+                    $('#idle').addClass("ds-led-hazard-active");     // IDLE
+                    $('#running').removeClass("ds-led-heat-active"); // RUNNING
+                    $('#running').removeClass("ds-led-cool-active"); // RUNNING
+		}
 
                 $('#act_temp').html(parseInt(x.temperature));
-                $('#heat').html('<div class="bar" style="height:'+x.pidstats.out*70+'%;"></div>')
-                if (x.cool > 0.5) { $('#cool').addClass("ds-led-cool-active"); } else { $('#cool').removeClass("ds-led-cool-active"); }
-                if (x.air > 0.5) { $('#air').addClass("ds-led-air-active"); } else { $('#air').removeClass("ds-led-air-active"); }
-                if (x.temperature > hazardTemp()) { $('#hazard').addClass("ds-led-hazard-active"); } else { $('#hazard').removeClass("ds-led-hazard-active"); }
-                if ((x.door == "OPEN") || (x.door == "UNKNOWN")) { $('#door').addClass("ds-led-door-open"); } else { $('#door').removeClass("ds-led-door-open"); }
+                //$('#progressBar').html('<div class="bar" style="height:'+x.pidstats.out*70+'%;"></div>')
+
+                if (x.temperature > warnat)
+                {
+                    // WE ARE APPROACHING WITHIN 5 DEGREES OF EMERGENCY TEMPERATURE
+                    $('#hazard').addClass("ds-led-heat-active");
+                    //ADD SEND EMAIL, TRIGGER GPIO SIREN WARNING SYSTEM, OR OTHER FUNCTIONS HERE IN CASE OF REAL EMERGENCY
+                }
+                else
+                {
+                    $('#hazard').removeClass("ds-led-hazard-active");
+                }
 
                 state_last = state;
 
@@ -601,8 +854,42 @@ $(document).ready(function()
             time_scale_slope = x.time_scale_slope;
             time_scale_profile = x.time_scale_profile;
             kwh_rate = x.kwh_rate;
+            kw_elements = x.kw_elements;
             currency_type = x.currency_type;
 
+            // ADDED TO BE ABLE TO PORT IN MORE INFORMATION TO GUI
+            pid_kp = x.pid_kp;
+            pid_ki = x.pid_ki;
+            pid_kd = x.pid_kd;
+            function_passcode = x.function_passcode;
+            kiln_name = x.kiln_name;
+            emergency_shutoff_temp = x.emergency_shutoff_temp; // make variable emergency_shutoff_tempavailable here
+            warnat = emergency_shutoff_temp -5; // make variable emergency_shutoff_tempavailable here
+            kiln_must_catch_up = x.kiln_must_catch_up;
+            pid_control_window = x.pid_control_window;
+            ignore_pid_control_window_until = x.ignore_pid_control_window_until;
+
+            //$("#show_BACKEND_FUNCTION_1").hide(); // Hide this optional function by default
+            $('#currency_type').html(x.currency_type);
+            // MARK TILLES
+            $('#kw_elements').html(kw_elements);
+            //$('#capacity').html(10*1000);
+            //////
+            $("#kiln_name").html(kiln_name); // Define variable for web instance
+            $("#pid_kp").html(pid_kp); // Define variable for web instance
+            $("#pid_ki").html(pid_ki); // Define variable for web instance
+            $("#pid_kd").html(pid_kd); // Define variable for web instance
+            $("#emerg_temp").html(emergency_shutoff_temp); // Define variable for web instance
+            $("#warnat").html(warnat); // Define variable for web instance
+            if (kiln_must_catch_up == true)
+            {
+                $("#catch_up_max").html(pid_control_window + "\/" + ignore_pid_control_window_until); // Define variable for web instance
+            }
+            else
+            {
+                $("#catch_up_max").html("off"); // Define variable for web instance
+            }
+            // ADDED TO BE ABLE TO PORT IN MORE INFORMATION TO GUI
             if (temp_scale == "c") {temp_scale_display = "C";} else {temp_scale_display = "F";}
 
 
