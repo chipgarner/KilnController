@@ -105,7 +105,13 @@ class TempSensorSimulated(TempSensor):
     '''Simulates a temperature sensor '''
     def __init__(self):
         TempSensor.__init__(self)
-        self.simulated_temperature = 0
+        self.simulated_temperature = 20
+
+        self.noConnection = False
+        self.shortToGround = False
+        self.shortToVCC = False
+        self.unknownError = False
+        self.bad_percent = 7
     def temperature(self):
         return self.simulated_temperature
 
@@ -415,7 +421,7 @@ class Oven(threading.Thread):
         '''shift the whole schedule forward in time by one time_step
         to wait for the kiln to catch up'''
         if config.kiln_must_catch_up == True:
-            temp = self.board.temp_sensor.temperature + config.thermocouple_offset
+            temp = self.board.temp_sensor.temperature() + config.thermocouple_offset
 
             # If (ambient temp in kiln room) > (firing curve start temp + catch-up), curve will never start
             # Or, if oven overswings at low temps beyond the catch-up value, the timer pauses while cooling.
@@ -424,7 +430,7 @@ class Oven(threading.Thread):
                 # kiln too cold, wait for it to heat up
                 if self.target - temp > config.pid_control_window:
                     log.info("kiln must catch up, too cold, shifting schedule")
-                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000)
+                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000 / config.sim_speedup_factor)
                     # kiln too hot, wait for it to cool down
                 if temp - self.target > config.pid_control_window:
                     log.info("over-swing detected, continuing schedule timer while sensor temp < ignore_pid_control_window_until = %s" % config.ignore_pid_control_window_until)
@@ -433,11 +439,11 @@ class Oven(threading.Thread):
                 # kiln too cold, wait for it to heat up
                 if self.target - temp > config.pid_control_window:
                     log.info("kiln must catch up, too cold, shifting schedule")
-                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000)
+                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000 / config.sim_speedup_factor)
                     # kiln too hot, wait for it to cool down
                 if temp - self.target > config.pid_control_window:
                     log.info("kiln must catch up, too hot, shifting schedule")
-                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000)
+                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000 / config.sim_speedup_factor)
 
 
     def update_runtime(self):
@@ -595,7 +601,7 @@ class SimulatedOven(Oven):
     def __init__(self):
         # call parent init
         super().__init__()
-        self.board = BoardSimulated()
+        self.board = SimulatedBoard()
         self.t_env = config.sim_t_env
         self.c_heat = config.sim_c_heat
         self.c_oven = config.sim_c_oven
