@@ -2,6 +2,7 @@ Kiln Controller
 ==========
 
 Turns a Raspberry Pi into an inexpensive, web-enabled kiln controller.
+Based on https://github.com/jbruce12000/kiln-controller and https://github.com/marktilles/kiln-controller
 
 ## Features
 
