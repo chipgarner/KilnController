@@ -16,7 +16,7 @@ def test_get_target_temperature():
     profile = get_profile()
 
     temperature = profile.get_target_temperature(3000)
-    assert int(temperature) == 178
+    assert int(temperature) == 200
 
     temperature = profile.get_target_temperature(6004)
     assert temperature == 801.0
