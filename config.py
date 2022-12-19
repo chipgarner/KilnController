@@ -112,7 +112,7 @@ pid_kd = 200  # Derivative
 simulate = True
 sim_t_env      = 60.0   # deg C
 sim_c_heat     = 500.0  # J/K  heat capacity of heat element
-sim_c_oven     = 17000.0 # J/K  heat capacity of oven
+sim_c_oven     = 10000.0 # J/K  heat capacity of oven
 sim_p_heat     = 5450.0 # W    heating power of oven
 sim_R_o_nocool = 0.5   # K/W  thermal resistance oven -> environment
 sim_R_o_cool   = 0.05   # K/W  " with cooling
@@ -150,7 +150,7 @@ kiln_must_catch_up = True
 # or 100% off because the kiln is too hot. No integral builds up
 # outside the window. The bigger you make the window, the more
 # integral you will accumulate. This should be a positive integer.
-pid_control_window = 50 #degrees
+pid_control_window = 5 #degrees
 
 # thermocouple offset
 # If you put your thermocouple in ice water and it reads 36F, you can

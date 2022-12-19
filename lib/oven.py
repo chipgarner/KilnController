@@ -367,6 +367,7 @@ class Oven(threading.Thread):
             self.start_datetime = None
         self.profile = None
         self.start_time = datetime.datetime.now()
+        self.orignal_start_time = self.start_time
         self.runtime = 0
         self.totaltime = 0
         self.target = 0
@@ -430,7 +431,7 @@ class Oven(threading.Thread):
                 # kiln too cold, wait for it to heat up
                 if self.target - temp > config.pid_control_window:
                     log.info("kiln must catch up, too cold, shifting schedule")
-                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000 / config.sim_speedup_factor)
+                    self.start_time = self.get_start_time()
                     # kiln too hot, wait for it to cool down
                 if temp - self.target > config.pid_control_window:
                     log.info("over-swing detected, continuing schedule timer while sensor temp < ignore_pid_control_window_until = %s" % config.ignore_pid_control_window_until)
@@ -439,11 +440,11 @@ class Oven(threading.Thread):
                 # kiln too cold, wait for it to heat up
                 if self.target - temp > config.pid_control_window:
                     log.info("kiln must catch up, too cold, shifting schedule")
-                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000 / config.sim_speedup_factor)
+                    self.start_time =  self.get_start_time()
                     # kiln too hot, wait for it to cool down
                 if temp - self.target > config.pid_control_window:
                     log.info("kiln must catch up, too hot, shifting schedule")
-                    self.start_time = datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000 / config.sim_speedup_factor)
+                    self.start_time = self.get_start_time()
 
 
     def update_runtime(self):
@@ -624,7 +625,7 @@ class SimulatedOven(Oven):
         return datetime.datetime.now() - datetime.timedelta(milliseconds = self.runtime * 1000 / self.speedup_factor)
 
     def update_runtime(self):
-        runtime_delta = datetime.datetime.now() - self.start_time
+        runtime_delta = datetime.datetime.now() - self.orignal_start_time  # self.start_time
         if runtime_delta.total_seconds() < 0:
             runtime_delta = datetime.timedelta(0)
 
