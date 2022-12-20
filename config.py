@@ -10,6 +10,8 @@ import busio
 service_running_led_gpio = 6 # Old system
 function_passcode = "unni"
 ignore_pid_control_window_until = 70
+
+seek_start = True
 ########################################################################
 #
 #   General options

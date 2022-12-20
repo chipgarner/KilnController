@@ -150,6 +150,8 @@ class TempSensorReal(TempSensor):
         return self.temptracker.get_avg_temp()
 
     def run(self):
+        '''use a moving average of config.temperature_average_samples across the time_step'''
+        temps = []
         while True:
             # reset error counter if time is up
             if (time.time() - self.bad_stamp) > (self.time_step * 2):
@@ -375,10 +377,25 @@ class Oven(threading.Thread):
         self.heat = 0
         self.pid = PID(ki=config.pid_ki, kd=config.pid_kd, kp=config.pid_kp)
 
+    def get_start_from_temperature(self, profile, temp):
+        target_temp = profile.get_target_temperature(0)
+        if temp > target_temp + 5:
+            startat = 3600
+        else:
+            startat = 0
+        return startat
+
     def run_profile(self, profile, startat=0):
+        runtime = startat * 60
+        if self.state == 'IDLE':
+            if config.seek_start:
+                # if startat == 0 ???
+                temp = self.board.temp_sensor.temperature()  # Defined in a subclass
+                runtime += self.get_start_from_temperature(profile, temp)
+
         self.reset()
         self.startat = startat * 60
-        self.runtime = self.startat
+        self.runtime = runtime
         self.start_time = datetime.datetime.now() - datetime.timedelta(seconds=self.startat)
         self.profile = profile
         self.totaltime = profile.get_duration()
