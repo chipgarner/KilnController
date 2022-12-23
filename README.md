@@ -4,6 +4,28 @@ Kiln Controller
 Turns a Raspberry Pi into an inexpensive, web-enabled kiln controller.
 Based on https://github.com/jbruce12000/kiln-controller and https://github.com/marktilles/kiln-controller
 
+## Seek Temperature on Hot Start
+
+Turn this feature off by setting seek_start = False in your config.py file. It is on by default.
+
+The purpose of this feature is to prevent having to wait for the kiln to cool if it is above the scheduled start 
+temperature when the Start button is clicked. This can happen if you have preheated the kiln manually or with 
+another schedule, or if it was shut off accidentally, and you needed to restart the firing.
+
+If your kiln is above the scheduled starting temperature when you click the Start button this 
+feature will start the schedule at that temperature. Suppose your firing profile starts at 50 
+degrees and ramps to 200 degrees in one hour. (Centigrade or Fahrenheit, it doesn't matter in this example.) 
+If your kiln is below 50 degrees it will start normally by first heating to 50 degrees. If it is above 50 
+degrees when you click Start, say 150 degrees, it will seek that time for 150 degrees in the schedule and 
+start the firing at that time. In this case, about 40 minutes after time 0, see the figure below.
+
+![img.png](seek150.png)
+
+The seek feature always looks for the first segment in the firing profile that meets or exceeds the current 
+temperature when the Start button is clicked. In the figure below the kiln is at 500 degrees and the schedule
+is started at about 2:40.
+
+![img_1.png](seek500.png)
 ## Features
 
   * supports [many boards](https://github.com/jbruce12000/kiln-controller/blob/blinka/docs/supported-boards.md) into addition to raspberry pi
