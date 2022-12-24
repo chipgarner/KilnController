@@ -11,7 +11,6 @@ service_running_led_gpio = 6 # Old system
 function_passcode = "unni"
 ignore_pid_control_window_until = 70
 
-seek_start = True
 ########################################################################
 #
 #   General options
@@ -132,6 +131,11 @@ sim_speedup_factor = 1000
 temp_scale          = "f" # c = Celsius | f = Fahrenheit - Unit to display
 time_scale_slope    = "h" # s = Seconds | m = Minutes | h = Hours - Slope displayed in temp_scale per time_scale_slope
 time_scale_profile  = "m" # s = Seconds | m = Minutes | h = Hours - Enter and view target time in time_scale_profile
+
+# If your kiln is above the scheduled starting temperature when you click the Start button this
+# feature will start the schedule at that temperature.
+#
+seek_start = True
 
 # emergency shutoff the profile if this temp is reached or exceeded.
 # This just shuts off the profile. If your SSR is working, your kiln will
