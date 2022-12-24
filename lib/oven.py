@@ -422,13 +422,14 @@ class Oven(threading.Thread):
             startat = 0
         return startat
 
-    def run_profile(self, profile, startat=0):
+    def run_profile(self, profile, startat=0, auto_restart=False):
         runtime = startat * 60
-        if self.state == 'IDLE':
-            if config.seek_start:
-                # if startat == 0 ???
-                temp = self.board.temp_sensor.temperature()  # Defined in a subclass
-                runtime += self.get_start_from_temperature(profile, temp)
+        if not auto_restart:
+            if self.state == 'IDLE':
+                if config.seek_start:
+                    # if startat == 0 ???
+                    temp = self.board.temp_sensor.temperature()  # Defined in a subclass
+                    runtime += self.get_start_from_temperature(profile, temp)
 
         self.reset()
         self.startat = startat * 60
@@ -630,7 +631,7 @@ class Oven(threading.Thread):
         with open(profile_path) as infile:
             profile_json = json.dumps(json.load(infile))
         profile = Profile(profile_json)
-        self.run_profile(profile, startat=startat)
+        self.run_profile(profile, startat=startat, auto_restart=True)
         self.cost = d["cost"]
         time.sleep(1)
         self.ovenwatcher.record(profile)
