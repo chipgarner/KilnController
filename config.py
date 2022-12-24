@@ -8,7 +8,7 @@ from digitalio import DigitalInOut
 import busio
 
 service_running_led_gpio = 6 # Old system
-function_passcode = "unni"
+function_passcode = "123"
 ignore_pid_control_window_until = 70
 
 ########################################################################

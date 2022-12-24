@@ -33,6 +33,7 @@ profile_path = config.kiln_profiles_directory
 
 from oven import SimulatedOven, RealOven, Profile
 from ovenWatcher import OvenWatcher
+from lib.oven_monitor import OvenMonitor
 
 app = bottle.Bottle()
 
@@ -49,7 +50,8 @@ if config.service_running_led == True:
 
 if config.simulate == True:
     log.info("this is a simulation")
-    oven = SimulatedOven()
+    # oven = SimulatedOven()
+    oven = OvenMonitor()
 else:
     log.info("this is a real kiln")
     oven = RealOven()
@@ -129,7 +131,7 @@ def find_profile(wanted):
     return None
 
 def run_profile(profile, startat=0):
-    oven.run_profile(profile, startat)
+    # oven.run_profile(profile, startat)
     ovenWatcher.record(profile)
 
 
@@ -164,7 +166,7 @@ def handle_control():
                         profile_json = json.dumps(profile_obj)
                         profile = Profile(profile_json)
 
-                    run_profile(profile)
+                    run_profile(None)
 
                 elif msgdict.get("cmd") == "SCHEDULED_RUN":
                     log.info("SCHEDULED_RUN command received")

@@ -130,6 +130,7 @@ class TempSensorSimulated(TempSensor):
         self.bad_percent = 7
 
     def temperature(self):
+        self.simulated_temperature += 1
         return self.simulated_temperature
 
 

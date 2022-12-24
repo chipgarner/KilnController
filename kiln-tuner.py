@@ -55,8 +55,8 @@ def recordprofile(csvfile, targettemp):
                 oven.heat_then_cool()
             else:
                 oven.output.heat(sleepfor)
-            temp = oven.board.temp_sensor.temperature() + \
-                config.thermocouple_offset
+            temp = oven.simulated_board.temp_sensor.temperature() + \
+                   config.thermocouple_offset
             
             print("stage = %s, actual = %.2f, target = %.2f" % (stage,temp,targettemp))
             csvout.writerow([time.time(), temp])
@@ -71,8 +71,8 @@ def recordprofile(csvfile, targettemp):
                 oven.heat_then_cool()
             else:
                 oven.output.cool(sleepfor)
-            temp = oven.board.temp_sensor.temperature() + \
-                config.thermocouple_offset
+            temp = oven.simulated_board.temp_sensor.temperature() + \
+                   config.thermocouple_offset
             
             print("stage = %s, actual = %.2f, target = %.2f" % (stage,temp,targettemp))
             csvout.writerow([time.time(), temp])
