@@ -16,7 +16,7 @@ ignore_pid_control_window_until = 70
 #   General options
 
 ### Logging
-log_level = logging.INFO
+log_level = logging.DEBUG
 log_format = '%(asctime)s %(levelname)s %(name)s: %(message)s'
 
 ### Server
