@@ -689,7 +689,7 @@ class Oven(threading.Thread):
                 self.update_runtime()
                 self.update_target_temp()
                 self.heat_then_cool()
-                self.reset_if_emergency()
+                # self.reset_if_emergency() TODO broken
                 self.reset_if_schedule_ended()
 
 
