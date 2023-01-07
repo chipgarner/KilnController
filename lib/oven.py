@@ -172,6 +172,7 @@ class TempSensorReal(TempSensor):
     def run(self):
         '''use a moving average of config.temperature_average_samples across the time_step'''
         temps = []
+        self.bad_stamp = time.time()
         while True:
             # reset error counter if time is up
             if (time.time() - self.bad_stamp) > (self.time_step * 2):
