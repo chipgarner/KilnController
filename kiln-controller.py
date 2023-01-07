@@ -29,7 +29,8 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, script_dir + '/lib/')
 profile_path = config.kiln_profiles_directory
 
-from lib.oven import SimulatedOven, RealOven, Profile
+from lib.oven import SimulatedOven, RealOven
+from lib.Profile import Profile
 from lib.ovenWatcher import OvenWatcher
 
 app = bottle.Bottle()

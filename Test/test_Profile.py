@@ -1,4 +1,4 @@
-from lib.oven import Profile
+from lib.Profile import Profile
 import os
 import json
 
