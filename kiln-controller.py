@@ -96,9 +96,9 @@ def handle_api():
         # FIXME juggling of json should happen in the Profile class
         profile_json = json.dumps(profile)
         profile = Profile(profile_json)
-        oven.run_profile(profile, startat=startat, allow_seek=allow_seek)
-        ovenWatcher.record(profile)
 
+        oven.run_profile(profile,startat=startat, allow_seek=allow_seek)
+        ovenWatcher.record(profile)
 
     if bottle.request.json['cmd'] == 'stop':
         log.info("api stop command received")
