@@ -174,42 +174,48 @@ class TempSensorReal(TempSensor):
         temps = []
         self.bad_stamp = time.time()
         while True:
-            # reset error counter if time is up
-            if (time.time() - self.bad_stamp) > (self.time_step * 2):
-                if self.bad_count + self.ok_count:
-                    self.bad_percent = (self.bad_count / (self.bad_count + self.ok_count)) * 100
-                else:
-                    self.bad_percent = 0
-                self.bad_count = 0
-                self.ok_count = 0
-                self.bad_stamp = time.time()
-
-            temp = self.thermocouple.get()
-            self.noConnection = self.thermocouple.noConnection
-            self.shortToGround = self.thermocouple.shortToGround
-            self.shortToVCC = self.thermocouple.shortToVCC
-            self.unknownError = self.thermocouple.unknownError
-
-            is_bad_value = self.noConnection | self.unknownError
-            if not config.ignore_tc_short_errors:
-                is_bad_value |= self.shortToGround | self.shortToVCC
-
-            if not is_bad_value:
-                temps.append(temp)
-                if len(temps) > config.temperature_average_samples:
-                    del temps[0]
-                self.ok_count += 1
-
-            else:
-                log.error("Problem reading temp N/C:%s GND:%s VCC:%s ???:%s" % (
-                self.noConnection, self.shortToGround, self.shortToVCC, self.unknownError))
-                self.bad_count += 1
-
-            if len(temps):
-                self.temperature = self.get_avg_temp(temps)
-
+            temp = self.get_temperature()
+            if temp:
+                self.temptracker.add(temp)
             time.sleep(self.sleeptime)
 
+############ Marks stuff, '55 only
+            # reset error counter if time is up
+            # if (time.time() - self.bad_stamp) > (self.time_step * 2):
+            #     if self.bad_count + self.ok_count:
+            #         self.bad_percent = (self.bad_count / (self.bad_count + self.ok_count)) * 100
+            #     else:
+            #         self.bad_percent = 0
+            #     self.bad_count = 0
+            #     self.ok_count = 0
+            #     self.bad_stamp = time.time()
+            #
+            # temp = self.thermocouple.get()
+            # self.noConnection = self.thermocouple.noConnection
+            # self.shortToGround = self.thermocouple.shortToGround
+            # self.shortToVCC = self.thermocouple.shortToVCC
+            # self.unknownError = self.thermocouple.unknownError
+            #
+            # is_bad_value = self.noConnection | self.unknownError
+            # if not config.ignore_tc_short_errors:
+            #     is_bad_value |= self.shortToGround | self.shortToVCC
+            #
+            # if not is_bad_value:
+            #     temps.append(temp)
+            #     if len(temps) > config.temperature_average_samples:
+            #         del temps[0]
+            #     self.ok_count += 1
+            #
+            # else:
+            #     log.error("Problem reading temp N/C:%s GND:%s VCC:%s ???:%s" % (
+            #     self.noConnection, self.shortToGround, self.shortToVCC, self.unknownError))
+            #     self.bad_count += 1
+            #
+            # if len(temps):
+            #     self.temperature = self.get_avg_temp(temps)
+            #
+            # time.sleep(self.sleeptime)
+            #
 
 class TempTracker(object):
     '''creates a sliding window of N temperatures per
