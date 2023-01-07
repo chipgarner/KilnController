@@ -26,4 +26,8 @@ _marktilles_/ronald_update.tar
 .My kiln controller project.pdf.icloud
 *.icloud
 state.json
+<<<<<<< HEAD
 
+=======
+venv/*
+>>>>>>> origin/blinka

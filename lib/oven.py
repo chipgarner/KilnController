@@ -121,13 +121,14 @@ class TempSensorSimulated(TempSensor):
 
     def __init__(self):
         TempSensor.__init__(self)
-        self.simulated_temperature = 150
 
         self.noConnection = False
         self.shortToGround = False
         self.shortToVCC = False
         self.unknownError = False
         self.bad_percent = 7
+
+        self.simulated_temperature = config.sim_t_env
 
     def temperature(self):
         return self.simulated_temperature
@@ -362,12 +363,13 @@ class Max31856(TempSensorReal):
         TempSensorReal.__init__(self)
         log.info("thermocouple MAX31856")
         import adafruit_max31856
-        adafruit_max31856.ThermocoupleType(config.thermocouple_type)
-        self.thermocouple = adafruit_max31856.MAX31856(self.spi, self.cs)
+        self.thermocouple = adafruit_max31856.MAX31856(self.spi,self.cs,
+                                        thermocouple_type=config.thermocouple_type)
+
         if (config.ac_freq_50hz == True):
-            self.thermocouple.noise_rejection(50)
+            self.thermocouple.noise_rejection = 50
         else:
-            self.thermocouple.noise_rejection(60)
+            self.thermocouple.noise_rejection = 60
 
     def raw_temp(self):
         # The underlying adafruit library does not throw exceptions
@@ -376,7 +378,8 @@ class Max31856(TempSensorReal):
         # dict for errors and raise an exception.
         # and raise Max31856_Error(message)
         temp = self.thermocouple.temperature
-        for k, v in self.thermocouple.fault:
+
+        for k,v in self.thermocouple.fault.items():
             if v:
                 raise Max31856_Error(k)
         return temp
@@ -410,6 +413,8 @@ class Oven(threading.Thread):
         self.totaltime = 0
         self.target = 0
         self.heat = 0
+        self.heat_rate = 0
+        self.heat_rate_temps = []
         self.pid = PID(ki=config.pid_ki, kd=config.pid_kd, kp=config.pid_kp)
 
     @staticmethod
@@ -417,18 +422,38 @@ class Oven(threading.Thread):
         target_temp = profile.get_target_temperature(0)
         if temp > target_temp + 5:
             startat = profile.find_next_time_from_temperature(temp)
-            log.info("seek_start is in effect")
+
+            log.info("seek_start is in effect, starting at: {} s, {} deg".format(round(startat), round(temp)))
         else:
             startat = 0
         return startat
 
-    def run_profile(self, profile, startat=0):
+    def set_heat_rate(self,runtime,temp):
+        '''heat rate is the heating rate in degrees/hour
+        '''
+        # arbitrary number of samples
+        # the time this covers changes based on a few things
+        numtemps = 60
+        self.heat_rate_temps.append((runtime,temp))
+         
+        # drop old temps off the list
+        if len(self.heat_rate_temps) > numtemps:
+            self.heat_rate_temps = self.heat_rate_temps[-1*numtemps:]
+        time2 = self.heat_rate_temps[-1][0]
+        time1 = self.heat_rate_temps[0][0]
+        temp2 = self.heat_rate_temps[-1][1]
+        temp1 = self.heat_rate_temps[0][1]
+        if time2 > time1:
+            self.heat_rate = ((temp2 - temp1) / (time2 - time1))*3600
+
+    def run_profile(self, profile, startat=0, allow_seek=True):
+        log.debug('run_profile run on thread' + threading.current_thread().name)
         runtime = startat * 60
-        if self.state == 'IDLE':
-            if config.seek_start:
-                # if startat == 0 ???
-                temp = self.board.temp_sensor.temperature()  # Defined in a subclass
-                runtime += self.get_start_from_temperature(profile, temp)
+        if allow_seek:
+            if self.state == 'IDLE':
+                if config.seek_start:
+                    temp = self.board.temp_sensor.temperature()  # Defined in a subclass
+                    runtime += self.get_start_from_temperature(profile, temp)
 
         self.reset()
         self.startat = startat * 60
@@ -538,7 +563,7 @@ class Oven(threading.Thread):
         if self.board.temp_sensor.bad_percent > 30:
 
             log.info("emergency!!! too many errors in a short period")
-            if config.ignore_too_many_tc_errors == False:
+            if config.ignore_tc_too_many_errors == False:
                 self.abort_run()
 
     def reset_if_schedule_ended(self):
@@ -566,6 +591,8 @@ class Oven(threading.Thread):
             temp = 0
             pass
 
+        self.set_heat_rate(self.runtime,temp)
+
         state = {
             'cost': self.cost,
             'runtime': self.plot_runtime,
@@ -573,6 +600,7 @@ class Oven(threading.Thread):
             'target': self.target,
             'state': self.state,
             'heat': self.heat,
+            'heat_rate': self.heat_rate,
             'totaltime': self.totaltime,
             'kwh_rate': config.kwh_rate,
             'currency_type': config.currency_type,
@@ -630,7 +658,7 @@ class Oven(threading.Thread):
         with open(profile_path) as infile:
             profile_json = json.dumps(json.load(infile))
         profile = Profile(profile_json)
-        self.run_profile(profile, startat=startat)
+        self.run_profile(profile, startat=startat, allow_seek=False)  # We don't want a seek on an auto restart.
         self.cost = d["cost"]
         time.sleep(1)
         self.ovenwatcher.record(profile)
@@ -641,6 +669,7 @@ class Oven(threading.Thread):
 
     def run(self):
         while True:
+            log.debug('Oven running on ' + threading.current_thread().name)
             if self.state == "IDLE":
                 if self.should_i_automatic_restart() == True:
                     self.automatic_restart()
@@ -673,8 +702,11 @@ class SimulatedOven(Oven):
         self.speedup_factor = config.sim_speedup_factor
 
         # set temps to the temp of the surrounding environment
-        self.t = self.board.temp_sensor.simulated_temperature  # deg C temp of oven
-        self.t_h = self.t_env  # deg C temp of heating element
+
+        self.t = config.sim_t_env  # deg C or F temp of oven
+        self.t_h = self.t_env #deg C temp of heating element
+
+        super().__init__()
 
         # start thread
         self.start()
@@ -787,7 +819,7 @@ class RealOven(Oven):
 
     def heat_then_cool(self):
         pid = self.pid.compute(self.target,
-                               self.board.temp_sensor.temperature +
+                               self.board.temp_sensor.temperature() +
                                config.thermocouple_offset, datetime.datetime.now())
 
         heat_on = float(self.time_step * pid)
@@ -832,6 +864,28 @@ class Profile():
 
     def get_duration(self):
         return max([t for (t, x) in self.data])
+
+    #  x = (y-y1)(x2-x1)/(y2-y1) + x1
+    @staticmethod
+    def find_x_given_y_on_line_from_two_points(y, point1, point2):
+        if point1[0] > point2[0]: return 0  # time2 before time1 makes no sense in kiln segment
+        if point1[1] >= point2[1]: return 0 # Zero will crach. Negative temeporature slope, we don't want to seek a time.
+        x = (y - point1[1]) * (point2[0] -point1[0] ) / (point2[1] - point1[1]) + point1[0]
+        return x
+
+    def find_next_time_from_temperature(self, temperature):
+        time = 0 # The seek function will not do anything if this returns zero, no useful intersection was found
+        for index, point2 in enumerate(self.data):
+            if point2[1] >= temperature:
+                if index > 0: #  Zero here would be before the first segment
+                    if self.data[index - 1][1] <= temperature: # We have an intersection
+                        time = self.find_x_given_y_on_line_from_two_points(temperature, self.data[index - 1], point2)
+                        if time == 0:
+                            if self.data[index - 1][1] == point2[1]: # It's a flat segment that matches the temperature
+                                time = self.data[index - 1][0]
+                                break
+
+        return time
 
     def get_surrounding_points(self, time):
         if time > self.get_duration():

@@ -15,9 +15,7 @@ from geventwebsocket.handler import WebSocketHandler
 from geventwebsocket import WebSocketError
 
 try:
-    sys.dont_write_bytecode = True
     import config
-    sys.dont_write_bytecode = False
 except:
     print ("Could not import config file.")
     print ("Copy config.py.EXAMPLE to config.py and adapt it for your setup.")
@@ -31,8 +29,8 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, script_dir + '/lib/')
 profile_path = config.kiln_profiles_directory
 
-from oven import SimulatedOven, RealOven, Profile
-from ovenWatcher import OvenWatcher
+from lib.oven import SimulatedOven, RealOven, Profile
+from lib.ovenWatcher import OvenWatcher
 
 app = bottle.Bottle()
 
@@ -85,6 +83,11 @@ def handle_api():
         if 'startat' in bottle.request.json:
             startat = bottle.request.json['startat']
 
+        #Shut off seek if start time has been set
+        allow_seek = True
+        if startat > 0:
+            allow_seek = False
+
         # get the wanted profile/kiln schedule
         profile = find_profile(wanted)
         if profile is None:
@@ -93,7 +96,9 @@ def handle_api():
         # FIXME juggling of json should happen in the Profile class
         profile_json = json.dumps(profile)
         profile = Profile(profile_json)
-        run_profile(profile,startat=startat)
+        oven.run_profile(profile, startat=startat, allow_seek=allow_seek)
+        ovenWatcher.record(profile)
+
 
     if bottle.request.json['cmd'] == 'stop':
         log.info("api stop command received")

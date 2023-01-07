@@ -70,10 +70,11 @@ except ModuleNotFoundError:
 ### Thermocouple Adapter selection:
 #   max31855 - bitbang SPI interface
 #   max31856 - bitbang SPI interface. must specify thermocouple_type.
-max31855 = 1
-max31856 = 0
-# uncomment this if using MAX-31856
-#thermocouple_type = ThermocoupleType.S
+max31855 = 0
+max31856 = 1
+# uncomment these two lines if using MAX-31856
+import adafruit_max31856
+thermocouple_type = adafruit_max31856.ThermocoupleType.K
 
 # here are the possible max-31856 thermocouple types
 #   ThermocoupleType.B
@@ -84,6 +85,13 @@ max31856 = 0
 #   ThermocoupleType.R
 #   ThermocoupleType.S
 #   ThermocoupleType.T
+
+########################################################################
+#
+# If your kiln is above the scheduled starting temperature when you click the Start button this
+# feature will start the schedule at that temperature.
+#
+seek_start = True
 
 ########################################################################
 #
@@ -111,7 +119,7 @@ pid_kd = 200  # Derivative
 #
 #   Simulation parameters
 simulate = True
-sim_t_env      = 60.0   # deg C
+sim_t_env      = 255   # deg C
 sim_c_heat     = 500.0  # J/K  heat capacity of heat element
 sim_c_oven     = 10000.0 # J/K  heat capacity of oven
 sim_p_heat     = 5450.0 # W    heating power of oven
@@ -212,7 +220,7 @@ ignore_tc_too_many_errors = False
 # cleaned up (deleted) by the OS on boot.
 # The state file is written to disk every sensor_time_wait seconds (2s by default)
 # and is written in the same directory as config.py.
-automatic_restarts = False
+automatic_restarts = True
 automatic_restart_window = 15 # max minutes since power outage
 automatic_restart_state_file = os.path.abspath(os.path.join(os.path.dirname( __file__ ),'state.json'))
 

@@ -624,17 +624,18 @@ $(document).ready(function()
         {
             console.log("Status Socket has been opened");
 
-            $.bootstrapGrowl("<span class=\"glyphicon glyphicon-exclamation-sign\"></span> Getting data from server",
-            {
-            ele: 'body', // which element to append to
-            type: 'success', // (null, 'info', 'error', 'success')
-            offset: {from: 'top', amount: 250}, // 'top', or 'bottom'
-            align: 'center', // ('left', 'right', or 'center')
-            width: 385, // (integer, or 'auto')
-            delay: 2500,
-            allow_dismiss: true,
-            stackup_spacing: 10 // spacing between consecutively stacked growls.
-            });
+//            $.bootstrapGrowl("<span class=\"glyphicon glyphicon-exclamation-sign\"></span>Getting data from server",
+//            {
+//            ele: 'body', // which element to append to
+//            type: 'success', // (null, 'info', 'error', 'success')
+//            offset: {from: 'top', amount: 250}, // 'top', or 'bottom'
+//            align: 'center', // ('left', 'right', or 'center')
+//            width: 385, // (integer, or 'auto')
+//            delay: 2500,
+//            allow_dismiss: true,
+//            stackup_spacing: 10 // spacing between consecutively stacked growls.
+//            });
+
         };
 
         ws_status.onclose = function()
@@ -821,18 +822,16 @@ $(document).ready(function()
 		}
 
                 $('#act_temp').html(parseInt(x.temperature));
-                //$('#progressBar').html('<div class="bar" style="height:'+x.pidstats.out*70+'%;"></div>')
 
-                if (x.temperature > warnat)
-                {
-                    // WE ARE APPROACHING WITHIN 5 DEGREES OF EMERGENCY TEMPERATURE
-                    $('#hazard').addClass("ds-led-heat-active");
-                    //ADD SEND EMAIL, TRIGGER GPIO SIREN WARNING SYSTEM, OR OTHER FUNCTIONS HERE IN CASE OF REAL EMERGENCY
-                }
-                else
-                {
-                    $('#hazard').removeClass("ds-led-hazard-active");
-                }
+                heat_rate = parseInt(x.heat_rate)
+                if (heat_rate > 9999) { heat_rate = 9999; }
+                if (heat_rate < -9999) { heat_rate = -9999; }
+                $('#heat_rate').html(heat_rate);
+                $('#heat').html('<div class="bar" style="height:'+x.pidstats.out*70+'%;"></div>')
+                if (x.cool > 0.5) { $('#cool').addClass("ds-led-cool-active"); } else { $('#cool').removeClass("ds-led-cool-active"); }
+                if (x.air > 0.5) { $('#air').addClass("ds-led-air-active"); } else { $('#air').removeClass("ds-led-air-active"); }
+                if (x.temperature > hazardTemp()) { $('#hazard').addClass("ds-led-hazard-active"); } else { $('#hazard').removeClass("ds-led-hazard-active"); }
+                if ((x.door == "OPEN") || (x.door == "UNKNOWN")) { $('#door').addClass("ds-led-door-open"); } else { $('#door').removeClass("ds-led-door-open"); }
 
                 state_last = state;
 
@@ -895,6 +894,7 @@ $(document).ready(function()
 
             $('#act_temp_scale').html('º'+temp_scale_display);
             $('#target_temp_scale').html('º'+temp_scale_display);
+            $('#heat_rate_temp_scale').html('º'+temp_scale_display);
 
             switch(time_scale_profile){
                 case "s":
