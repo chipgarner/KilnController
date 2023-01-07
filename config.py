@@ -118,7 +118,7 @@ pid_kd = 200  # Derivative
 ########################################################################
 #
 #   Simulation parameters
-simulate = True
+simulate = False
 sim_t_env      = 255   # deg C
 sim_c_heat     = 500.0  # J/K  heat capacity of heat element
 sim_c_oven     = 10000.0 # J/K  heat capacity of oven
