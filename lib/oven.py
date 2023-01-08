@@ -259,6 +259,7 @@ class Oven(threading.Thread):
         scheduled_start = None
         if self.start_datetime:
             scheduled_start = self.start_datetime.strftime("%Y-%m-%d at %H:%M")
+
         temp = [0, 0]
         try:
             temp = self.board.temperatures() # + config.thermocouple_offset
@@ -267,7 +268,7 @@ class Oven(threading.Thread):
             temp = [0, 0]
             pass
 
-        self.set_heat_rate(self.runtime,temp[1])
+        self.set_heat_rate(self.runtime,temp[0])
 
         state = {
             'cost': self.cost,
