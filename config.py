@@ -60,7 +60,7 @@ try:
     spi_sclk  = board.D11 #spi clock
     spi_mosi  = board.D10 #spi Microcomputer Out Serial In (not connected) 
     spi_miso  = board.D9  #spi Microcomputer In Serial Out
-    spi_cs    = board.D5  #spi Chip Select
+    spi_cs    = board.D6  #spi Chip Select
     gpio_heat = board.D23 #output that controls relay
 except NotImplementedError:
     print("not running on blinka recognized board, probably a simulation")
@@ -119,7 +119,7 @@ pid_kd = 200  # Derivative
 ########################################################################
 #
 #   Simulation parameters
-simulate = True
+simulate = False
 sim_t_env      = 255   # deg C
 sim_c_heat     = 500.0  # J/K  heat capacity of heat element
 sim_c_oven     = 10000.0 # J/K  heat capacity of oven
