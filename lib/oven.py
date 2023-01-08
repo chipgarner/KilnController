@@ -220,7 +220,7 @@ class Oven(threading.Thread):
 
     def reset_if_emergency(self):
         '''reset if the temperature is way TOO HOT, or other critical errors detected'''
-        if (self.board.temp_sensor.temperature() + config.thermocouple_offset >=
+        if (self.board.temperatures()[0] + config.thermocouple_offset >=
                 config.emergency_shutoff_temp):
             log.info("emergency!!! temperature too high")
             if config.ignore_temp_too_high == False:
@@ -272,8 +272,8 @@ class Oven(threading.Thread):
         state = {
             'cost': self.cost,
             'runtime': self.plot_runtime,
-            't1': temp[0],
-            'temperature': temp[1],
+            't1': temp[1],
+            'temperature': temp[0],
             'target': self.target,
             'state': self.state,
             'heat': self.heat,
@@ -496,7 +496,7 @@ class RealOven(Oven):
 
     def heat_then_cool(self):
         pid = self.pid.compute(self.target,
-                               self.board.temp_sensor.temperature() +
+                               self.board.temperatures()[0] +
                                config.thermocouple_offset, datetime.datetime.now())
 
         heat_on = float(self.time_step * pid)
