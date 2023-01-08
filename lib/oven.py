@@ -251,7 +251,7 @@ class Oven(threading.Thread):
             temp = [0, 0]
             pass
 
-        self.heating_rate.update_heating_rate(self.runtime,temp[0])
+        self.heating_rate.update_heating_rate(self.plot_runtime,temp[0])
 
         state = {
             'cost': self.cost,
