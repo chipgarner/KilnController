@@ -330,13 +330,12 @@ class Max31856_Error(ThermocoupleError):
 
 class Max31856(TempSensorReal):
     '''each subclass expected to handle errors and get temperature'''
-    import board # TODO hackety hack
 
     def __init__(self):
         TempSensorReal.__init__(self)
         log.info("thermocouple MAX31856")
         import adafruit_max31856
-        self.thermocouple = adafruit_max31856.MAX31856(self.board.D5, self.cs,
+        self.thermocouple = adafruit_max31856.MAX31856(config.spi_cs_56, self.cs,
                                         thermocouple_type=config.thermocouple_type)
 
         if (config.ac_freq_50hz == True):

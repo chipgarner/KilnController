@@ -74,6 +74,7 @@ except ModuleNotFoundError:
 max31855 = 0
 max31856 = 1
 # uncomment these two lines if using MAX-31856
+spi_cs_56 = board.D5
 import adafruit_max31856
 thermocouple_type = adafruit_max31856.ThermocoupleType.K
 
