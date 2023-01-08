@@ -330,6 +330,7 @@ class Max31856_Error(ThermocoupleError):
 
 class Max31856(TempSensorReal):
     '''each subclass expected to handle errors and get temperature'''
+    import board # TODO hackety hack
 
     def __init__(self):
         TempSensorReal.__init__(self)
