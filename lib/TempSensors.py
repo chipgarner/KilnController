@@ -142,7 +142,7 @@ class TempSensorReal(TempSensor):
             temp = self.get_raw_temperature()
             if temp:
                 self.temptracker.add(temp)
-            time.sleep(self.sleeptime)
+            time.sleep(1) # self.sleeptime)
 
 ############ Marks stuff, '55 only
             # reset error counter if time is up
@@ -245,7 +245,7 @@ class Max31855(TempSensorReal):
 
     def raw_temp(self):
         try:
-            return self.thermocouple.temperature_NIST
+            return self.thermocouple.temperature
         except RuntimeError as rte:
             if rte.args and rte.args[0]:
                 raise Max31855_Error(rte.args[0])
