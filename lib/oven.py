@@ -129,7 +129,7 @@ class Oven(threading.Thread):
             if self.state == 'IDLE':
                 if config.seek_start:
                     temp = self.board.temp_sensor.temperature()  # Defined in a subclass
-                    runtime += self.get_start_from_temperature(profile, temp)
+                    runtime += self.get_start_from_temperature(profile, temp[0])
 
         self.reset()
         self.startat = startat * 60
@@ -178,7 +178,7 @@ class Oven(threading.Thread):
         '''shift the whole schedule forward in time by one time_step
         to wait for the kiln to catch up'''
         if config.kiln_must_catch_up == True:
-            temp = self.board.temp_sensor.temperature() + config.thermocouple_offset
+            temp = self.board.temp_sensor.temperature()[0] + config.thermocouple_offset
 
             # If (ambient temp in kiln room) > (firing curve start temp + catch-up), curve will never start
             # Or, if oven overswings at low temps beyond the catch-up value, the timer pauses while cooling.
@@ -259,20 +259,21 @@ class Oven(threading.Thread):
         scheduled_start = None
         if self.start_datetime:
             scheduled_start = self.start_datetime.strftime("%Y-%m-%d at %H:%M")
-        temp = 0
+        temp = [0, 0]
         try:
-            temp = self.board.temp_sensor.temperature() + config.thermocouple_offset
+            temp = self.board.temp_sensor.temperature() # + config.thermocouple_offset
         except AttributeError as error:
             # this happens at start-up with a simulated oven
             temp = 0
             pass
 
-        self.set_heat_rate(self.runtime,temp)
+        self.set_heat_rate(self.runtime,temp[1])
 
         state = {
             'cost': self.cost,
             'runtime': self.plot_runtime,
-            'temperature': temp,
+            't1': temp[0],
+            'temperature': temp[1],
             'target': self.target,
             'state': self.state,
             'heat': self.heat,
@@ -431,7 +432,7 @@ class SimulatedOven(Oven):
     def heat_then_cool(self):
         now_simulator = self.start_time + datetime.timedelta(milliseconds=self.runtime * 1000)
         pid = self.pid.compute(self.target,
-                               self.board.temp_sensor.temperature() +
+                               self.board.temp_sensor.temperature()[0] +
                                config.thermocouple_offset, now_simulator)
 
         heat_on = float(self.time_step * pid)

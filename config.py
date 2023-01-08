@@ -119,7 +119,7 @@ pid_kd = 200  # Derivative
 ########################################################################
 #
 #   Simulation parameters
-simulate = False
+simulate = True
 sim_t_env      = 255   # deg C
 sim_c_heat     = 500.0  # J/K  heat capacity of heat element
 sim_c_oven     = 10000.0 # J/K  heat capacity of oven
@@ -128,7 +128,7 @@ sim_R_o_nocool = 0.5   # K/W  thermal resistance oven -> environment
 sim_R_o_cool   = 0.05   # K/W  " with cooling
 sim_R_ho_noair = 0.1    # K/W  thermal resistance heat element -> oven
 sim_R_ho_air   = 0.05   # K/W  " with internal air circulation
-sim_speedup_factor = 1000
+sim_speedup_factor = 10
 
 
 ########################################################################
@@ -221,7 +221,7 @@ ignore_tc_too_many_errors = False
 # cleaned up (deleted) by the OS on boot.
 # The state file is written to disk every sensor_time_wait seconds (2s by default)
 # and is written in the same directory as config.py.
-automatic_restarts = True
+automatic_restarts = False
 automatic_restart_window = 15 # max minutes since power outage
 automatic_restart_state_file = os.path.abspath(os.path.join(os.path.dirname( __file__ ),'state.json'))
 

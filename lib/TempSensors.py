@@ -78,9 +78,11 @@ class TempSensorSimulated(TempSensor):
         self.bad_percent = 7
 
         self.simulated_temperature = config.sim_t_env
+        self.t2 = self.simulated_temperature
 
     def temperature(self):
-        return self.simulated_temperature
+        self.t2 += 1
+        return [self.simulated_temperature, self.t2]
 
 
 class TempSensorReal(TempSensor):

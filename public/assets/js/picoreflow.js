@@ -112,7 +112,16 @@ graph.live =
     label: "Live",
     data: [],
     points: { show: false },
-    color: "#d8d3c5",
+    color: "#ffffff",
+    draggable: false
+};
+
+graph.live1 =
+{
+    label: "Live1",
+    data: [],
+    points: { show: false },
+    color: "#ff9900",
     draggable: false
 };
 
@@ -673,7 +682,8 @@ $(document).ready(function()
 
                 $.each(x.log, function(i,v) {
                     graph.live.data.push([v.runtime, v.temperature]);
-                    graph.plot = $.plot("#graph_container", [ graph.profile, graph.live ] , getOptions());
+                    graph.live1.data.push([v.runtime, v.t1]);
+                    graph.plot = $.plot("#graph_container", [ graph.profile, graph.live, graph.live1 ] , getOptions());
                 });
             }
 
@@ -742,7 +752,8 @@ $(document).ready(function()
                     heat_now = (x.heat*50).toFixed(0); // This displays time percentage Heat is ON in heating cycle
 
                     graph.live.data.push([x.runtime, x.temperature]);
-                    graph.plot = $.plot("#graph_container", [ graph.profile, graph.live ] , getOptions());
+                    graph.live1.data.push([x.runtime, x.t1]);
+                    graph.plot = $.plot("#graph_container", [ graph.profile, graph.live, graph.live1 ] , getOptions());
 
                     left = parseInt(x.totaltime-x.runtime);
                     eta = new Date(left * 1000).toISOString().substr(11, 8);
@@ -924,7 +935,8 @@ $(document).ready(function()
             console.log (e.data);
             x = JSON.parse(e.data);
             graph.live.data.push([x.runtime, x.temperature]);
-            graph.plot = $.plot("#graph_container", [ graph.profile, graph.live ] , getOptions());
+            graph.live1.data.push([x.runtime, x.t1]);
+            graph.plot = $.plot("#graph_container", [ graph.profile, graph.live, graph.live1 ] , getOptions());
 
         }
 
