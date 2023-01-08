@@ -113,6 +113,8 @@ class TempSensorReal(TempSensor):
         self.spi = busio.SPI(config.spi_sclk, config.spi_mosi, config.spi_miso)
         self.cs = digitalio.DigitalInOut(config.spi_cs)
 
+        self.last_temp = 0
+
     def get_raw_temperature(self):
         '''read temp from tc and convert if needed'''
         try:
@@ -132,7 +134,13 @@ class TempSensorReal(TempSensor):
 
     def get_temperature(self):
         '''average temp over a duty cycle'''
-        return self.temptracker.get_avg_temp()
+        # return self.temptracker.get_avg_temp()
+        temp = self.get_raw_temperature()
+        if temp is not None:
+            self.last_temp = temp
+            return temp
+        else:
+            return self.last_temp
 
     def run(self):
         '''use a moving average of config.temperature_average_samples across the time_step'''
@@ -346,6 +354,8 @@ class Max31856(TempSensorReal):
             self.thermocouple.noise_rejection = 50
         else:
             self.thermocouple.noise_rejection = 60
+
+        self.last_temp = 0
 
     def raw_temp(self):
         # The underlying adafruit library does not throw exceptions
