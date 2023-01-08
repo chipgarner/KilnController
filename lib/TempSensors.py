@@ -193,7 +193,7 @@ class TempTracker(object):
 
     def add(self, temp):
         self.temps.append(temp)
-        while (len(self.temps) > self.size):
+        while len(self.temps) > self.size:
             del self.temps[0]
 
     def get_avg_temp(self, chop=25):
@@ -242,14 +242,17 @@ class Max31855(TempSensorReal):
         log.info("thermocouple MAX31855")
         import adafruit_max31855
         self.thermocouple = adafruit_max31855.MAX31855(self.spi, self.cs)
+        self.last_temp = 0
 
     def raw_temp(self):
         try:
-            return self.thermocouple.temperature
-        except RuntimeError as rte:
-            if rte.args and rte.args[0]:
-                raise Max31855_Error(rte.args[0])
-            raise Max31855_Error('unknown')
+            temp = self.thermocouple.temperature
+            self.last_temp = temp
+        except RuntimeError as ex:
+            logging.error('Temp2 31855 crash: ' + str(ex))
+            temp = self.last_temp
+
+        return temp
 
 
 class ThermocoupleError(Exception):
