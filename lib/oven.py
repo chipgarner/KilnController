@@ -8,6 +8,7 @@ import os
 import digitalio
 from lib.TempSensors import SimulatedBoard, RealBoard
 from lib.Profile import Profile
+from lib.HeatingRate import HeatingRate
 
 
 from threading import Timer
@@ -72,6 +73,7 @@ class Oven(threading.Thread):
         self.time_step = config.sensor_time_wait
         self.scheduled_run_timer = None
         self.start_datetime = None
+        self.heating_rate = HeatingRate()
         self.reset()
 
     def reset(self):
@@ -89,8 +91,7 @@ class Oven(threading.Thread):
         self.totaltime = 0
         self.target = 0
         self.heat = 0
-        self.heat_rate = 0
-        self.heat_rate_temps = []
+        self.heating_rate.reset()
         self.pid = PID(ki=config.pid_ki, kd=config.pid_kd, kp=config.pid_kp)
 
     @staticmethod
@@ -103,24 +104,6 @@ class Oven(threading.Thread):
         else:
             startat = 0
         return startat
-
-    def set_heat_rate(self,runtime,temp):
-        '''heat rate is the heating rate in degrees/hour
-        '''
-        # arbitrary number of samples
-        # the time this covers changes based on a few things
-        numtemps = 60
-        self.heat_rate_temps.append((runtime,temp))
-         
-        # drop old temps off the list
-        if len(self.heat_rate_temps) > numtemps:
-            self.heat_rate_temps = self.heat_rate_temps[-1*numtemps:]
-        time2 = self.heat_rate_temps[-1][0]
-        time1 = self.heat_rate_temps[0][0]
-        temp2 = self.heat_rate_temps[-1][1]
-        temp1 = self.heat_rate_temps[0][1]
-        if time2 > time1:
-            self.heat_rate = ((temp2 - temp1) / (time2 - time1))*3600
 
     def run_profile(self, profile, startat=0, allow_seek=True):
         log.debug('run_profile run on thread' + threading.current_thread().name)
@@ -268,7 +251,7 @@ class Oven(threading.Thread):
             temp = [0, 0]
             pass
 
-        self.set_heat_rate(self.runtime,temp[0])
+        self.heating_rate.update_heating_rate(self.runtime,temp[0])
 
         state = {
             'cost': self.cost,
@@ -278,7 +261,7 @@ class Oven(threading.Thread):
             'target': self.target,
             'state': self.state,
             'heat': self.heat,
-            'heat_rate': self.heat_rate,
+            'heat_rate': self.heating_rate.get_heating_rate(),
             'totaltime': self.totaltime,
             'kwh_rate': config.kwh_rate,
             'currency_type': config.currency_type,

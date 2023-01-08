@@ -7,19 +7,17 @@ import json
 from datetime import datetime
 
 import bottle
-import gevent
-import geventwebsocket
-#from bottle import post, get
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 from geventwebsocket import WebSocketError
 
-try:
-    import config
-except:
-    print ("Could not import config file.")
-    print ("Copy config.py.EXAMPLE to config.py and adapt it for your setup.")
-    exit(1)
+import config
+# try:
+#     import config
+# except:
+#     print ("Could not import config file.")
+#     print ("Copy config.py.EXAMPLE to config.py and adapt it for your setup.")
+#     exit(1)
 
 logging.basicConfig(level=config.log_level, format=config.log_format)
 log = logging.getLogger("kiln-controller")

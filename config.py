@@ -61,6 +61,7 @@ try:
     spi_mosi  = board.D10 #spi Microcomputer Out Serial In (not connected) 
     spi_miso  = board.D9  #spi Microcomputer In Serial Out
     spi_cs    = board.D6  #spi Chip Select
+    spi_cs_56 = board.D5
     gpio_heat = board.D23 #output that controls relay
 except NotImplementedError:
     print("not running on blinka recognized board, probably a simulation")
@@ -74,7 +75,7 @@ except ModuleNotFoundError:
 max31855 = 0
 max31856 = 1
 # uncomment these two lines if using MAX-31856
-spi_cs_56 = board.D5
+
 import adafruit_max31856
 thermocouple_type = adafruit_max31856.ThermocoupleType.K
 
@@ -120,7 +121,7 @@ pid_kd = 200  # Derivative
 ########################################################################
 #
 #   Simulation parameters
-simulate = False
+simulate = True
 sim_t_env      = 255   # deg C
 sim_c_heat     = 500.0  # J/K  heat capacity of heat element
 sim_c_oven     = 10000.0 # J/K  heat capacity of oven
