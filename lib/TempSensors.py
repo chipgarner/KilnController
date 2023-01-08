@@ -16,7 +16,9 @@ class Board(object):
 
     def __init__(self):
         log.info("board: %s" % (self.name))
-        self.temp_sensor.start()
+
+        for sensor in self.temp_sensors:
+            sensor.start()
 
 
 class RealBoard(Board):
@@ -28,7 +30,7 @@ class RealBoard(Board):
     def __init__(self):
         self.name = None
         self.load_libs()
-        self.temp_sensor = self.choose_tempsensor()
+        self.temp_sensors = self.choose_tempsensor()
         Board.__init__(self)
 
     def load_libs(self):
@@ -36,10 +38,16 @@ class RealBoard(Board):
         self.name = board.board_id
 
     def choose_tempsensor(self):
-        if config.max31855:
-            return Max31855()
-        if config.max31856:
-            return Max31856()
+        # if config.max31855:
+        #     return Max31855()
+        # if config.max31856:
+        return (Max31856(), Max31855())
+
+    def temperatures(self):
+        temps = []
+        for sensor in self.temp_sensors:
+            temps.append(sensor.get_raw_temperature())
+        return temps
 
 
 class SimulatedBoard(Board):
@@ -49,8 +57,15 @@ class SimulatedBoard(Board):
 
     def __init__(self):
         self.name = "simulated"
-        self.temp_sensor = TempSensorSimulated()
+        self.temp_sensors = TempSensorSimulated(), TempSensorSimulated()
         Board.__init__(self)
+
+    def temperatures(self):
+        self.temp_sensors[0].simulated_temperature += 1
+        temps = []
+        for sensor in self.temp_sensors:
+            temps.append(sensor.get_temperature())
+        return temps
 
 
 class TempSensor(threading.Thread):
@@ -78,11 +93,10 @@ class TempSensorSimulated(TempSensor):
         self.bad_percent = 7
 
         self.simulated_temperature = config.sim_t_env
-        self.t2 = self.simulated_temperature
 
-    def temperature(self):
-        self.t2 += 1
-        return [self.simulated_temperature, self.t2]
+    def get_temperature(self):
+
+        return self.simulated_temperature
 
 
 class TempSensorReal(TempSensor):
@@ -99,7 +113,7 @@ class TempSensorReal(TempSensor):
         self.spi = busio.SPI(config.spi_sclk, config.spi_mosi, config.spi_miso)
         self.cs = digitalio.DigitalInOut(config.spi_cs)
 
-    def get_temperature(self):
+    def get_raw_temperature(self):
         '''read temp from tc and convert if needed'''
         try:
             temp = self.raw_temp()  # raw_temp provided by subclasses
@@ -116,7 +130,7 @@ class TempSensorReal(TempSensor):
                 self.status.bad()
         return None
 
-    def temperature(self):
+    def get_temperature(self):
         '''average temp over a duty cycle'''
         return self.temptracker.get_avg_temp()
 
@@ -125,7 +139,7 @@ class TempSensorReal(TempSensor):
         temps = []
         self.bad_stamp = time.time()
         while True:
-            temp = self.get_temperature()
+            temp = self.get_raw_temperature()
             if temp:
                 self.temptracker.add(temp)
             time.sleep(self.sleeptime)
