@@ -46,7 +46,7 @@ class RealBoard(Board):
     def temperatures(self):
         temps = []
         for sensor in self.temp_sensors:
-            temps.append(sensor.get_raw_temperature())
+            temps.append(sensor.get_temperature())
         return temps
 
 
