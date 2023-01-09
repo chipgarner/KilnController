@@ -345,7 +345,7 @@ class Oven(threading.Thread):
                 self.heat_then_cool()
                 # self.reset_if_emergency() TODO broken
                 self.reset_if_schedule_ended()
-                self.time.sleep(2)
+                time.sleep(2)
 
 
 class SimulatedOven(Oven):
