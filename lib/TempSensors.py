@@ -148,9 +148,9 @@ class TempSensorReal(TempSensor):
         self.bad_stamp = time.time()
         while True:
             temp = self.get_raw_temperature()
-            if temp:
-                self.temptracker.add(temp)
-            time.sleep(1) # self.sleeptime)
+            # if temp:
+            #     self.temptracker.add(temp)
+            time.sleep(2) # self.sleeptime)
 
 ############ Marks stuff, '55 only
             # reset error counter if time is up
