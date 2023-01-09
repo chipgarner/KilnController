@@ -261,7 +261,7 @@ class Max31855(TempSensorReal):
             temp = self.thermocouple.temperature
             self.last_temp = temp
         except RuntimeError as ex:
-            logging.error('Temp2 31855 crash: ' + str(ex))
+            logging.error(threading.current_thread().name + ' Temp2 31855 crash: ' + str(ex))
             temp = self.last_temp
 
         return temp
@@ -371,7 +371,7 @@ class Max31856(TempSensorReal):
 
         for k,v in self.thermocouple.fault.items():
             if v:
-                logging.error('MAX31856 error: ' + str(k))
+                logging.error(threading.current_thread().name + ' MAX31856 error: ' + str(k))
                 # raise Max31856_Error(k)
         return temp
 
