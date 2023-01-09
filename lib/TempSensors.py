@@ -151,7 +151,7 @@ class TempSensorReal(TempSensor):
         temps = []
         self.bad_stamp = time.time()
         while True:
-            self.temperature = self.set_raw_temperature()
+            self.temperature = self.set_temperature()
             # if temp:
             #     self.temptracker.add(temp)
             time.sleep(2) # self.sleeptime)
