@@ -9,39 +9,42 @@ import time
 log = logging.getLogger(__name__)
 
 
-class Board(object):
-    '''This represents a blinka board where this code
-    runs.
-    '''
+#
+# class Board(object):
+#     '''This represents a blinka board where this code
+#     runs.
+#     '''
+#
+#     def __init__(self):
+#         log.info("board: %s" % (self.name))
+#
+#         for sensor in self.temp_sensors:
+#             sensor.start()
+#
 
-    def __init__(self):
-        log.info("board: %s" % (self.name))
-
-        for sensor in self.temp_sensors:
-            sensor.start()
-
-
-class RealBoard(Board):
+class RealBoard(threading.Thread):
     '''Each board has a thermocouple board attached to it.
     Any blinka board that supports SPI can be used. The
     board is automatically detected by blinka.
     '''
 
     def __init__(self):
-        self.name = None
+        threading.Thread.__init__(self)
+        self.daemon = True
         self.load_libs()
         self.temp_sensors = self.choose_tempsensor()
-        Board.__init__(self)
+
+        self.start()
 
     def load_libs(self):
-        import board
-        self.name = board.board_id
+        import board # TODO this is never used, we use it in config.py to set cs to the right pin
+        log.info("board: %s" % board.board_id)
 
     def choose_tempsensor(self):
         # if config.max31855:
         #     return Max31855()
         # if config.max31856:
-        return (Max31856(), Max31855())
+        return Max31856(), Max31855()
 
     def temperatures(self):
         temps = []
@@ -49,8 +52,18 @@ class RealBoard(Board):
             temps.append(sensor.get_temperature())
         return temps
 
+    def run(self):
+        while True:
+            for sensor in self.temp_sensors:
+                sensor.temperature = sensor.set_temperature()
+            # if temp:
+            #     self.temptracker.add(temp)
+            time.sleep(2)  # self.sleeptime)
 
-class SimulatedBoard(Board):
+
+
+
+class SimulatedBoard():
     '''Simulated board used during simulations.
     See config.simulate
     '''
@@ -58,7 +71,6 @@ class SimulatedBoard(Board):
     def __init__(self):
         self.name = "simulated"
         self.temp_sensors = TempSensorSimulated(), TempSensorSimulated()
-        Board.__init__(self)
 
     def temperatures(self):
         self.temp_sensors[0].simulated_temperature += 1
@@ -68,14 +80,12 @@ class SimulatedBoard(Board):
         return temps
 
 
-class TempSensor(threading.Thread):
+class TempSensor():
     '''Used by the Board class. Each Board must have
     a TempSensor.
     '''
 
     def __init__(self):
-        threading.Thread.__init__(self)
-        self.daemon = True
         self.time_step = config.sensor_time_wait
         self.status = ThermocoupleTracker()
 
@@ -95,7 +105,6 @@ class TempSensorSimulated(TempSensor):
         self.simulated_temperature = config.sim_t_env
 
     def get_temperature(self):
-
         return self.simulated_temperature
 
 
@@ -109,7 +118,7 @@ class TempSensorReal(TempSensor):
     def __init__(self):
         TempSensor.__init__(self)
         self.sleeptime = self.time_step / float(config.temperature_average_samples)
-        self.temptracker = TempTracker()
+        # self.temptracker = TempTracker()
         self.spi = busio.SPI(config.spi_sclk, config.spi_mosi, config.spi_miso)
         self.cs = digitalio.DigitalInOut(config.spi_cs)
 
@@ -146,53 +155,54 @@ class TempSensorReal(TempSensor):
     def get_temperature(self):
         return self.temperature
 
-    def run(self):
-        '''use a moving average of config.temperature_average_samples across the time_step'''
-        temps = []
-        self.bad_stamp = time.time()
-        while True:
-            self.temperature = self.set_temperature()
-            # if temp:
-            #     self.temptracker.add(temp)
-            time.sleep(2) # self.sleeptime)
+    # def run(self):
+    #     '''use a moving average of config.temperature_average_samples across the time_step'''
+    #     temps = []
+    #     self.bad_stamp = time.time()
+    #     while True:
+    #         self.temperature = self.set_temperature()
+    #         # if temp:
+    #         #     self.temptracker.add(temp)
+    #         time.sleep(2)  # self.sleeptime)
+    #
 
 ############ Marks stuff, '55 only
-            # reset error counter if time is up
-            # if (time.time() - self.bad_stamp) > (self.time_step * 2):
-            #     if self.bad_count + self.ok_count:
-            #         self.bad_percent = (self.bad_count / (self.bad_count + self.ok_count)) * 100
-            #     else:
-            #         self.bad_percent = 0
-            #     self.bad_count = 0
-            #     self.ok_count = 0
-            #     self.bad_stamp = time.time()
-            #
-            # temp = self.thermocouple.get()
-            # self.noConnection = self.thermocouple.noConnection
-            # self.shortToGround = self.thermocouple.shortToGround
-            # self.shortToVCC = self.thermocouple.shortToVCC
-            # self.unknownError = self.thermocouple.unknownError
-            #
-            # is_bad_value = self.noConnection | self.unknownError
-            # if not config.ignore_tc_short_errors:
-            #     is_bad_value |= self.shortToGround | self.shortToVCC
-            #
-            # if not is_bad_value:
-            #     temps.append(temp)
-            #     if len(temps) > config.temperature_average_samples:
-            #         del temps[0]
-            #     self.ok_count += 1
-            #
-            # else:
-            #     log.error("Problem reading temp N/C:%s GND:%s VCC:%s ???:%s" % (
-            #     self.noConnection, self.shortToGround, self.shortToVCC, self.unknownError))
-            #     self.bad_count += 1
-            #
-            # if len(temps):
-            #     self.temperature = self.get_avg_temp(temps)
-            #
-            # time.sleep(self.sleeptime)
-            #
+# reset error counter if time is up
+# if (time.time() - self.bad_stamp) > (self.time_step * 2):
+#     if self.bad_count + self.ok_count:
+#         self.bad_percent = (self.bad_count / (self.bad_count + self.ok_count)) * 100
+#     else:
+#         self.bad_percent = 0
+#     self.bad_count = 0
+#     self.ok_count = 0
+#     self.bad_stamp = time.time()
+#
+# temp = self.thermocouple.get()
+# self.noConnection = self.thermocouple.noConnection
+# self.shortToGround = self.thermocouple.shortToGround
+# self.shortToVCC = self.thermocouple.shortToVCC
+# self.unknownError = self.thermocouple.unknownError
+#
+# is_bad_value = self.noConnection | self.unknownError
+# if not config.ignore_tc_short_errors:
+#     is_bad_value |= self.shortToGround | self.shortToVCC
+#
+# if not is_bad_value:
+#     temps.append(temp)
+#     if len(temps) > config.temperature_average_samples:
+#         del temps[0]
+#     self.ok_count += 1
+#
+# else:
+#     log.error("Problem reading temp N/C:%s GND:%s VCC:%s ???:%s" % (
+#     self.noConnection, self.shortToGround, self.shortToVCC, self.unknownError))
+#     self.bad_count += 1
+#
+# if len(temps):
+#     self.temperature = self.get_avg_temp(temps)
+#
+# time.sleep(self.sleeptime)
+#
 
 class TempTracker(object):
     '''creates a sliding window of N temperatures per
@@ -352,7 +362,7 @@ class Max31856(TempSensorReal):
         import adafruit_max31856
         cs1 = digitalio.DigitalInOut(config.spi_cs_56)
         self.thermocouple = adafruit_max31856.MAX31856(self.spi, cs1,
-                                        thermocouple_type=config.thermocouple_type)
+                                                       thermocouple_type=config.thermocouple_type)
 
         if (config.ac_freq_50hz == True):
             self.thermocouple.noise_rejection = 50
@@ -369,9 +379,8 @@ class Max31856(TempSensorReal):
         # and raise Max31856_Error(message)
         temp = self.thermocouple.temperature
 
-        for k,v in self.thermocouple.fault.items():
+        for k, v in self.thermocouple.fault.items():
             if v:
                 logging.error(threading.current_thread().name + ' MAX31856 error: ' + str(k))
                 # raise Max31856_Error(k)
         return temp
-
