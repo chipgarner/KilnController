@@ -8,7 +8,7 @@ from digitalio import DigitalInOut
 import busio
 
 service_running_led_gpio = 6 # Old system
-function_passcode = "123"
+function_passcode = "jkg"
 ignore_pid_control_window_until = 70
 
 ########################################################################
@@ -63,8 +63,9 @@ try:
     spi_cs    = board.D6  #spi Chip Select
     spi_cs_56 = board.D5
     gpio_heat = board.D23 #output that controls relay
-except NotImplementedError:
-    print("not running on blinka recognized board, probably a simulation")
+except NotImplementedError as ex:
+    print(str(ex))
+    print("Not running on blinka recognized board, probably a simulation.")
 except ModuleNotFoundError:
     print("No board, probably a simulation")
 
@@ -75,7 +76,6 @@ except ModuleNotFoundError:
 max31855 = 0
 max31856 = 1
 # uncomment these two lines if using MAX-31856
-
 import adafruit_max31856
 thermocouple_type = adafruit_max31856.ThermocoupleType.K
 
@@ -89,12 +89,6 @@ thermocouple_type = adafruit_max31856.ThermocoupleType.K
 #   ThermocoupleType.S
 #   ThermocoupleType.T
 
-########################################################################
-#
-# If your kiln is above the scheduled starting temperature when you click the Start button this
-# feature will start the schedule at that temperature.
-#
-seek_start = True
 
 ########################################################################
 #

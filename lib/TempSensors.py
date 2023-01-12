@@ -37,7 +37,7 @@ class RealBoard(threading.Thread):
         self.start()
 
     def load_libs(self):
-        import board # TODO this is never used, we use it in config.py to set cs to the right pin
+        import board  # TODO this is never used, we use it in config.py to set cs to the right pin
         log.info("board: %s" % board.board_id)
 
     def choose_tempsensor(self):
@@ -59,8 +59,6 @@ class RealBoard(threading.Thread):
             # if temp:
             #     self.temptracker.add(temp)
             time.sleep(2)  # self.sleeptime)
-
-
 
 
 class SimulatedBoard():
@@ -165,6 +163,7 @@ class TempSensorReal(TempSensor):
     #         #     self.temptracker.add(temp)
     #         time.sleep(2)  # self.sleeptime)
     #
+
 
 ############ Marks stuff, '55 only
 # reset error counter if time is up

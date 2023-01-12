@@ -16,7 +16,7 @@ from threading import Timer
 log = logging.getLogger(__name__)
 
 
-class DupFilter(object):
+class DupFilter:
     def __init__(self):
         self.msgs = set()
 
@@ -39,7 +39,7 @@ class Duplogger():
 duplog = Duplogger().logref()
 
 
-class Output(object):
+class Output:
     '''This represents a GPIO output that controls a solid
     state relay to turn the kiln elements on and off.
     inputs
@@ -59,7 +59,6 @@ class Output(object):
         '''no active cooling, so sleep'''
         self.heater.value = False
         time.sleep(sleepfor)
-
 
 
 class Oven(threading.Thread):
@@ -332,7 +331,7 @@ class Oven(threading.Thread):
         while True:
             log.debug('Oven running on ' + threading.current_thread().name)
             if self.state == "IDLE":
-                if self.should_i_automatic_restart() == True:
+                if self.should_i_automatic_restart():
                     self.automatic_restart()
                 time.sleep(2)
                 continue
